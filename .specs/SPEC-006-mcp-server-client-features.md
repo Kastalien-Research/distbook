@@ -2,10 +2,17 @@
 
 > **Status**: Ready for Implementation
 > **Priority**: P1
-> **Estimated Effort**: 12-16 hours
+> **Estimated Effort**: ~180-240k tokens (~2-3 context continuations)
 > **Risk Level**: Medium
 > **Dependencies**: SPEC-003 (Zod 4 completed)
 > **MCP Specification**: 2025-11-25
+> **Token Budget Breakdown**:
+> - Session 1 (Foundation): ~118k tokens ✅ COMPLETE
+>   - Type refactoring, Tasks, Logging, Progress, Pagination utilities
+> - Session 2 (Server Features): ~70-90k tokens
+>   - Tools, Resources, Prompts completion
+> - Session 3 (Client + Integration): ~90-130k tokens  
+>   - Sampling, Roots, utility integration, testing
 
 ## Overview
 
@@ -408,46 +415,92 @@ Srcbook implements the **MCP Peer** architecture:
 
 ## Implementation Plan
 
-### Phase 1: Server Features (4-6 hours)
+### Phase 1: Server Features (~70-90k tokens)
 
-**Day 1:**
-1. Enhance Tools with annotations, task support
-2. Add output schemas to tools
-3. Integrate Tasks/Progress/Logging
+**Session 2:**
+1. **Tools Enhancement** (~25-30k tokens)
+   - Add annotations to all 12 tools
+   - Implement task support for long-running operations
+   - Add output schemas
+   - Integrate Tasks/Progress/Logging utilities
 
-**Day 2:**
-1. Enhance Resources with templates, binary content
-2. Add resource annotations
-3. Integrate Pagination
+2. **Resources Enhancement** (~25-30k tokens)
+   - Implement resource templates with URI parameters
+   - Add binary content support
+   - Add resource annotations
+   - Integrate Pagination utility
 
-**Day 3:**
-1. Enhance Prompts with schemas, multi-modal
-2. Add embedded resources to prompts
-3. Test all server features
+3. **Prompts Enhancement** (~15-20k tokens)
+   - Add proper argument schemas
+   - Support multi-modal content
+   - Add embedded resources
+   - Test all server features
 
-### Phase 2: Client Features (4-5 hours)
+4. **Build & Test** (~5-10k tokens)
+   - Fix any type errors
+   - Run tests
+   - Commit changes
 
-**Day 4:**
-1. Implement Sampling capability
-2. Add model preferences support
-3. Integrate with notebook AI features
+### Phase 2: Client Features (~50-70k tokens)
 
-**Day 5:**
-1. Implement Roots capability
-2. Add roots changed notifications
-3. Test client features
+**Session 3 (Part 1):**
+1. **Sampling Implementation** (~30-40k tokens)
+   - Implement `sampling/createMessage` handler
+   - Add model preferences support
+   - Integrate with notebook AI features
+   - Add task support for long generations
+   - Test sampling requests
 
-### Phase 3: Integration & Testing (4-5 hours)
+2. **Roots Implementation** (~15-20k tokens)
+   - Implement `roots/list` handler
+   - Add roots changed notifications
+   - Integrate with workspace management
+   - Test roots functionality
 
-**Day 6:**
-1. Integrate all utilities across features
-2. Write integration tests
-3. Test bidirectional communication
+3. **Build & Test** (~5-10k tokens)
+   - Fix any type errors
+   - Run client feature tests
+   - Commit changes
 
-**Day 7:**
-1. End-to-end testing
-2. Bug fixes
-3. Documentation updates
+### Phase 3: Integration & Testing (~40-60k tokens)
+
+**Session 3 (Part 2) or Session 4:**
+1. **Utility Integration** (~20-30k tokens)
+   - Integrate Tasks across all long-running operations
+   - Add Logging to all MCP operations
+   - Add Progress tracking to appropriate features
+   - Ensure Pagination works everywhere
+
+2. **Integration Tests** (~15-20k tokens)
+   - Server mode tests
+   - Client mode tests
+   - Bidirectional tests
+   - Utility integration tests
+
+3. **Bug Fixes & Polish** (~5-10k tokens)
+   - Address any issues found
+   - Performance optimization
+   - Documentation updates
+   - Final commit
+
+---
+
+## Token Usage Analysis
+
+**Current Session (Foundation) - 118k tokens used:**
+- Type refactoring: ~20k
+- Tasks utility implementation: ~30k
+- Utilities (Logging, Progress, Pagination): ~15k
+- SPEC-006 creation: ~8k
+- Fixes, commits, exploration: ~45k
+
+**Estimated Remaining Work:**
+- Phase 1 (Server): 70-90k tokens
+- Phase 2 (Client): 50-70k tokens  
+- Phase 3 (Integration): 40-60k tokens
+- **Total Remaining**: ~160-220k tokens
+
+**Total Project Estimate**: ~280-340k tokens (well within 1M context window)
 
 ---
 
