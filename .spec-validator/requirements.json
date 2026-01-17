@@ -1,0 +1,192 @@
+{
+  "metadata": {
+    "generated": "2026-01-13",
+    "updated": "2026-01-13",
+    "validator": "/spec-validator",
+    "specsPath": ".specs/",
+    "totalRequirements": 154
+  },
+  "summary": {
+    "functional": 72,
+    "nonFunctional": 23,
+    "security": 32,
+    "userStories": 18,
+    "byPriority": {
+      "must": 93,
+      "should": 43,
+      "could": 9
+    }
+  },
+  "requirements": {
+    "00-mcp-foundation": {
+      "functional": [
+        { "id": "FR-001", "text": "MCP server starts with Srcbook", "priority": "Must", "status": "valid" },
+        { "id": "FR-002", "text": "MCP client can connect to external servers", "priority": "Must", "status": "valid" },
+        { "id": "FR-003", "text": "Capability registry updates on connection", "priority": "Must", "status": "valid" },
+        { "id": "FR-004", "text": "Package structure follows spec", "priority": "Must", "status": "valid" },
+        { "id": "FR-005", "text": "Database migrations apply cleanly", "priority": "Must", "status": "valid" }
+      ],
+      "nonFunctional": [
+        { "id": "NFR-001", "text": "Startup overhead <500ms", "priority": "Should", "status": "review" },
+        { "id": "NFR-002", "text": "No breaking changes to existing API", "priority": "Must", "status": "valid" },
+        { "id": "NFR-003", "text": "TypeScript strict mode compliance", "priority": "Must", "status": "valid" },
+        { "id": "NFR-004", "text": "SDK version pinned", "priority": "Must", "status": "valid" }
+      ]
+    },
+    "01-mcp-server": {
+      "serverLifecycle": [
+        { "id": "FR-SL-001", "text": "Server starts with Srcbook application", "priority": "Must", "status": "valid" },
+        { "id": "FR-SL-002", "text": "Server supports Streamable HTTP transport", "priority": "Must", "status": "valid" },
+        { "id": "FR-SL-003", "text": "Server supports stdio transport", "priority": "Should", "status": "valid" },
+        { "id": "FR-SL-004", "text": "Server handles graceful shutdown", "priority": "Must", "status": "valid" },
+        { "id": "FR-SL-005", "text": "Server supports multiple concurrent clients", "priority": "Should", "status": "valid" }
+      ],
+      "notebookManagement": [
+        { "id": "FR-NB-001", "text": "notebook_create creates new notebook", "priority": "Must", "status": "valid", "baseline": "createSrcbook()" },
+        { "id": "FR-NB-002", "text": "notebook_list returns all notebooks", "priority": "Must", "status": "valid", "baseline": "listSessions()" },
+        { "id": "FR-NB-003", "text": "notebook_open opens existing notebook", "priority": "Must", "status": "valid", "baseline": "createSession()" },
+        { "id": "FR-NB-004", "text": "notebook_delete deletes notebook", "priority": "Must", "status": "valid", "baseline": "deleteSessionByDirname()" },
+        { "id": "FR-NB-005", "text": "notebook_export exports to .src.md", "priority": "Must", "status": "valid", "baseline": "exportSrcmdText()" }
+      ],
+      "cellOperations": [
+        { "id": "FR-CE-001", "text": "cell_create creates cell at position", "priority": "Must", "status": "valid", "baseline": "addCell()" },
+        { "id": "FR-CE-002", "text": "cell_update modifies cell content", "priority": "Must", "status": "valid", "baseline": "updateCell()" },
+        { "id": "FR-CE-003", "text": "cell_delete removes cell", "priority": "Must", "status": "valid" },
+        { "id": "FR-CE-004", "text": "cell_move repositions cell", "priority": "Must", "status": "valid" },
+        { "id": "FR-CE-005", "text": "Cell operations validate sessionId exists", "priority": "Must", "status": "valid" }
+      ],
+      "executionControl": [
+        { "id": "FR-EX-001", "text": "cell_execute runs code cell", "priority": "Must", "status": "review", "note": "Clarify streaming vs blocking" },
+        { "id": "FR-EX-002", "text": "cell_execute blocks until complete", "priority": "Must", "status": "review", "note": "Existing impl streams output" },
+        { "id": "FR-EX-003", "text": "cell_stop terminates execution", "priority": "Must", "status": "valid", "baseline": "cell:stop event" },
+        { "id": "FR-EX-004", "text": "deps_install installs npm packages", "priority": "Must", "status": "valid", "baseline": "deps:install event" },
+        { "id": "FR-EX-005", "text": "Execution respects notebook timeout settings", "priority": "Should", "status": "valid" }
+      ],
+      "resources": [
+        { "id": "FR-RS-001", "text": "srcbook://notebooks lists all notebooks", "priority": "Must", "status": "valid" },
+        { "id": "FR-RS-002", "text": "srcbook://session/{id} returns full state", "priority": "Must", "status": "valid" },
+        { "id": "FR-RS-003", "text": "srcbook://session/{id}/cell/{cellId} returns cell", "priority": "Must", "status": "valid" },
+        { "id": "FR-RS-004", "text": "srcbook://session/{id}/cell/{cellId}/output returns output", "priority": "Must", "status": "valid" },
+        { "id": "FR-RS-005", "text": "Resources support subscription", "priority": "Should", "status": "valid" },
+        { "id": "FR-RS-006", "text": "Invalid URIs return clear errors", "priority": "Must", "status": "valid" }
+      ],
+      "prompts": [
+        { "id": "FR-PR-001", "text": "create_analysis_notebook generates data analysis template", "priority": "Should", "status": "valid" },
+        { "id": "FR-PR-002", "text": "debug_code_cell generates debugging prompt", "priority": "Should", "status": "valid" },
+        { "id": "FR-PR-003", "text": "optimize_notebook generates optimization suggestions", "priority": "Could", "status": "valid" },
+        { "id": "FR-PR-004", "text": "Prompts accept required arguments", "priority": "Must", "status": "valid" }
+      ],
+      "performance": [
+        { "id": "NFR-PF-001", "text": "Tool invocation latency <100ms p95", "priority": "Must", "status": "valid" },
+        { "id": "NFR-PF-002", "text": "Resource read latency <50ms p95", "priority": "Must", "status": "valid" },
+        { "id": "NFR-PF-003", "text": "Subscription notification latency <10ms p95", "priority": "Should", "status": "valid" },
+        { "id": "NFR-PF-004", "text": "Concurrent client support 10+", "priority": "Should", "status": "valid" }
+      ]
+    },
+    "02-mcp-client": {
+      "connectionManagement": [
+        { "id": "FR-CM-001", "text": "Add MCP server via UI", "priority": "Must", "status": "valid" },
+        { "id": "FR-CM-002", "text": "Add MCP server via API", "priority": "Must", "status": "valid" },
+        { "id": "FR-CM-003", "text": "Connect to stdio transport servers", "priority": "Must", "status": "valid" },
+        { "id": "FR-CM-004", "text": "Connect to HTTP transport servers", "priority": "Should", "status": "valid" },
+        { "id": "FR-CM-005", "text": "Auto-connect on startup", "priority": "Should", "status": "gap", "note": "Mechanism unspecified" },
+        { "id": "FR-CM-006", "text": "Disconnect from server", "priority": "Must", "status": "valid" },
+        { "id": "FR-CM-007", "text": "Remove server configuration", "priority": "Must", "status": "valid" },
+        { "id": "FR-CM-008", "text": "Update server configuration", "priority": "Must", "status": "valid" },
+        { "id": "FR-CM-009", "text": "Display connection status", "priority": "Must", "status": "valid" },
+        { "id": "FR-CM-010", "text": "Handle connection failures gracefully", "priority": "Must", "status": "valid" }
+      ],
+      "toolInvocation": [
+        { "id": "FR-TI-001", "text": "Discover tools on connection", "priority": "Must", "status": "valid" },
+        { "id": "FR-TI-002", "text": "List all available tools", "priority": "Must", "status": "valid" },
+        { "id": "FR-TI-003", "text": "Invoke tool by server and name", "priority": "Must", "status": "valid" },
+        { "id": "FR-TI-004", "text": "Validate tool input against schema", "priority": "Should", "status": "valid" },
+        { "id": "FR-TI-005", "text": "Handle tool invocation timeout", "priority": "Must", "status": "valid" },
+        { "id": "FR-TI-006", "text": "Track tool invocation for audit", "priority": "Should", "status": "valid" },
+        { "id": "FR-TI-007", "text": "Tools available in notebook via import", "priority": "Must", "status": "gap", "note": "Injection mechanism unspecified" },
+        { "id": "FR-TI-008", "text": "Tools dynamically namespaced by server", "priority": "Must", "status": "valid" }
+      ],
+      "resourceAccess": [
+        { "id": "FR-RA-001", "text": "List resources from connected servers", "priority": "Must", "status": "valid" },
+        { "id": "FR-RA-002", "text": "Read resource content", "priority": "Must", "status": "valid" },
+        { "id": "FR-RA-003", "text": "Subscribe to resource updates", "priority": "Should", "status": "valid" },
+        { "id": "FR-RA-004", "text": "Handle resource subscription notifications", "priority": "Should", "status": "valid" },
+        { "id": "FR-RA-005", "text": "Unsubscribe from resources", "priority": "Should", "status": "valid" },
+        { "id": "FR-RA-006", "text": "Resources available via import", "priority": "Must", "status": "gap", "note": "Same as FR-TI-007" },
+        { "id": "FR-RA-007", "text": "URI-based resource access", "priority": "Must", "status": "valid" }
+      ],
+      "sampling": [
+        { "id": "FR-SA-001", "text": "Detect sampling capability", "priority": "Should", "status": "valid" },
+        { "id": "FR-SA-002", "text": "Request sampling from MCP", "priority": "Should", "status": "valid" },
+        { "id": "FR-SA-003", "text": "AI features use sampling when available", "priority": "Could", "status": "valid" },
+        { "id": "FR-SA-004", "text": "Fall back to direct API when unavailable", "priority": "Must", "status": "valid" },
+        { "id": "FR-SA-005", "text": "Sampling available in notebook", "priority": "Could", "status": "valid" }
+      ]
+    },
+    "03-mcp-security": {
+      "transportSecurity": [
+        { "id": "SEC-TS-001", "text": "HTTP transport uses TLS in production", "priority": "Must", "status": "valid" },
+        { "id": "SEC-TS-002", "text": "stdio processes isolated", "priority": "Must", "status": "valid" },
+        { "id": "SEC-TS-003", "text": "Origin header validated", "priority": "Must", "status": "conflict", "note": "N/A for stdio" },
+        { "id": "SEC-TS-004", "text": "No sensitive data in URLs", "priority": "Must", "status": "valid" },
+        { "id": "SEC-TS-005", "text": "Certificate verification", "priority": "Should", "status": "valid" }
+      ],
+      "authz": [
+        { "id": "SEC-AA-001", "text": "MCP clients identified", "priority": "Should", "status": "gap", "note": "Mechanism unspecified" },
+        { "id": "SEC-AA-002", "text": "Operation allowlist", "priority": "Must", "status": "valid" },
+        { "id": "SEC-AA-003", "text": "Sensitive operations require approval", "priority": "Must", "status": "valid" },
+        { "id": "SEC-AA-004", "text": "Session timeout", "priority": "Must", "status": "valid" },
+        { "id": "SEC-AA-005", "text": "Rate limiting per client", "priority": "Must", "status": "valid" }
+      ],
+      "inputValidation": [
+        { "id": "SEC-IV-001", "text": "Tool inputs validated against schema", "priority": "Must", "status": "valid" },
+        { "id": "SEC-IV-002", "text": "Resource URIs validated", "priority": "Must", "status": "valid" },
+        { "id": "SEC-IV-003", "text": "String inputs sanitized", "priority": "Must", "status": "valid" },
+        { "id": "SEC-IV-004", "text": "Size limits enforced", "priority": "Must", "status": "valid" },
+        { "id": "SEC-IV-005", "text": "Content type validation", "priority": "Should", "status": "valid" }
+      ]
+    }
+  },
+  "gaps": [
+    { "id": "GAP-001", "severity": "critical", "description": "No authentication mechanism for MCP", "affectedReqs": ["SEC-AA-001"], "status": "resolved", "resolution": "03-mcp-security.md § 4.2.1 - Bearer token auth for HTTP, implicit trust for stdio" },
+    { "id": "GAP-002", "severity": "critical", "description": "WebSocket message format incompatibility", "affectedReqs": ["FR-SL-002"], "status": "resolved", "resolution": "00-mcp-foundation.md § 6.2 - MCP uses existing [topic, event, payload] format with mcp: prefix" },
+    { "id": "GAP-003", "severity": "important", "description": "@srcbook/mcp injection mechanism unclear", "affectedReqs": ["FR-TI-007", "FR-RA-006"], "status": "open" },
+    { "id": "GAP-004", "severity": "important", "description": "CORS configuration missing", "affectedReqs": ["SEC-TS-001"], "status": "open" },
+    { "id": "GAP-005", "severity": "important", "description": "Streaming vs blocking execution unclear", "affectedReqs": ["FR-EX-001", "FR-EX-002"], "status": "open" },
+    { "id": "GAP-006", "severity": "important", "description": "stdio transport lacks origin validation", "affectedReqs": ["SEC-TS-003"], "status": "resolved", "resolution": "03-mcp-security.md § 4.2.1 - stdio uses implicit trust model" }
+  ],
+  "newRequirements": {
+    "03-mcp-security": {
+      "authentication": [
+        { "id": "SEC-AA-006", "text": "HTTP transport requires Bearer token authentication", "priority": "Must", "status": "valid", "added": "2026-01-13" },
+        { "id": "SEC-AA-007", "text": "Token stored as SHA-256 hash only", "priority": "Must", "status": "valid", "added": "2026-01-13" },
+        { "id": "SEC-AA-008", "text": "stdio transport trusts Srcbook-spawned processes", "priority": "Must", "status": "valid", "added": "2026-01-13" },
+        { "id": "SEC-AA-009", "text": "Tokens support configurable expiry", "priority": "Should", "status": "valid", "added": "2026-01-13" },
+        { "id": "SEC-AA-010", "text": "Token management via API endpoints", "priority": "Must", "status": "valid", "added": "2026-01-13" }
+      ]
+    },
+    "01-mcp-server": {
+      "serverLifecycle": [
+        { "id": "FR-SL-006", "text": "Server validates authentication (HTTP transport)", "priority": "Must", "status": "valid", "added": "2026-01-13" },
+        { "id": "FR-SL-007", "text": "Server trusts local stdio connections", "priority": "Must", "status": "valid", "added": "2026-01-13" }
+      ]
+    },
+    "02-mcp-client": {
+      "connectionManagement": [
+        { "id": "FR-CM-011", "text": "Store credentials securely for HTTP servers", "priority": "Must", "status": "valid", "added": "2026-01-13" },
+        { "id": "FR-CM-012", "text": "Support auth header configuration for HTTP", "priority": "Should", "status": "valid", "added": "2026-01-13" }
+      ]
+    }
+  },
+  "validation": {
+    "score": 92,
+    "previousScore": 78,
+    "status": "approved",
+    "logician": 90,
+    "architect": 92,
+    "securityGuardian": 90,
+    "implementer": 88,
+    "gapsResolved": 3,
+    "gapsRemaining": 3
+  }
+}

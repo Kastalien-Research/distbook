@@ -64,6 +64,7 @@ import { filenameFromPath, pathToCodeFile } from '../srcbook/path.mjs';
 import { normalizeDiagnostic } from '../tsserver/utils.mjs';
 import { removeCodeCellFromDisk } from '../srcbook/index.mjs';
 import { register as registerAppChannel } from './channels/app.mjs';
+import { register as registerMCPChannel } from './channels/mcp.mjs';
 
 type SessionsContextType = MessageContextType<'sessionId'>;
 
@@ -892,5 +893,6 @@ wss
   );
 
 registerAppChannel(wss);
+registerMCPChannel(wss);
 
 export default wss;

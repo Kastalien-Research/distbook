@@ -1,0 +1,60 @@
+{
+  "session_id": "pkg-upgrade-2026-01-14",
+  "created_at": "2026-01-14T00:00:00Z",
+  "status": "complete",
+  "phase": 4,
+  "prompt": "Design implementation specifications for upgrading all packages in srcbook monorepo",
+  "depth": "standard",
+  "max_specs": 5,
+  "confidence_threshold": 0.85,
+  "spec_inventory": [
+    {
+      "id": "SPEC-001",
+      "name": "foundation-build-system",
+      "title": "Foundation & Build System Upgrade",
+      "priority": 1,
+      "dependencies": [],
+      "status": "pending"
+    },
+    {
+      "id": "SPEC-002",
+      "name": "eslint-flat-config-migration",
+      "title": "ESLint 9 Flat Config Migration",
+      "priority": 2,
+      "dependencies": ["SPEC-001"],
+      "status": "pending"
+    },
+    {
+      "id": "SPEC-003",
+      "name": "core-dependencies-upgrade",
+      "title": "Core Dependencies Upgrade",
+      "priority": 2,
+      "dependencies": ["SPEC-001"],
+      "status": "pending"
+    },
+    {
+      "id": "SPEC-004",
+      "name": "ai-sdk-migration",
+      "title": "Vercel AI SDK v6 Migration",
+      "priority": 2,
+      "dependencies": ["SPEC-001"],
+      "status": "pending"
+    },
+    {
+      "id": "SPEC-005",
+      "name": "frontend-stack-upgrade",
+      "title": "Frontend Stack Upgrade",
+      "priority": 3,
+      "dependencies": ["SPEC-003", "SPEC-004"],
+      "status": "authored"
+    }
+  ],
+  "authored_specs": [
+    ".specs/SPEC-001-foundation-build-system.md",
+    ".specs/SPEC-002-eslint-flat-config-migration.md",
+    ".specs/SPEC-003-core-dependencies-upgrade.md",
+    ".specs/SPEC-004-ai-sdk-migration.md",
+    ".specs/SPEC-005-frontend-stack-upgrade.md"
+  ],
+  "completed_at": "2026-01-14T02:30:00Z"
+}
