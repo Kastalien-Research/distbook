@@ -1,4 +1,18 @@
 import { z } from 'zod';
+import type {
+  Tool,
+  Resource,
+  Prompt,
+  PromptMessage,
+  CallToolResult,
+  ResourceContents,
+  GetPromptResult,
+  SamplingMessage,
+  CreateMessageRequest,
+  CreateMessageResult,
+  Root,
+  LoggingLevel,
+} from '@modelcontextprotocol/sdk/types.js';
 
 /**
  * MCP Types for Srcbook Integration
@@ -7,7 +21,12 @@ import { z } from 'zod';
  * - Server mode: Srcbook as MCP provider (exposing notebook operations)
  * - Client mode: Srcbook consuming external MCP servers
  *
- * Based on @modelcontextprotocol/sdk 1.24.0
+ * Based on @modelcontextprotocol/sdk 1.25.2 (MCP Specification 2025-11-25)
+ * 
+ * Architecture: Srcbook as "MCP Peer"
+ * - Implements full MCP Server specification
+ * - Implements full MCP Client specification
+ * - Extends SDK types for registry/tracking purposes
  */
 
 // =============================================================================
@@ -139,52 +158,103 @@ export const MCPResourceSubscriptionSchema = z.object({
 export type MCPResourceSubscription = z.infer<typeof MCPResourceSubscriptionSchema>;
 
 // =============================================================================
-// Capability Registry (aggregated from connected servers)
+// Registry Types - Extend SDK types with tracking metadata
 // =============================================================================
 
+/**
+ * Registered Tool - SDK Tool type extended with server tracking
+ * Used in client mode to track which server provides each tool
+ */
+export type MCPRegisteredTool = Tool & {
+  serverId: string;
+  serverName: string;
+};
+
+/**
+ * Registered Resource - SDK Resource type extended with server tracking
+ * Used in client mode to track which server provides each resource
+ */
+export type MCPRegisteredResource = Resource & {
+  serverId: string;
+  serverName: string;
+};
+
+/**
+ * Registered Prompt - SDK Prompt type extended with server tracking
+ * Used in client mode to track which server provides each prompt
+ */
+export type MCPRegisteredPrompt = Prompt & {
+  serverId: string;
+  serverName: string;
+};
+
+// Zod schemas for validation (extend SDK types)
 export const MCPRegisteredToolSchema = z.object({
+  // SDK Tool fields
+  name: z.string(),
+  description: z.string().optional(),
+  inputSchema: z.object({
+    type: z.literal('object'),
+    properties: z.record(z.string(), z.unknown()).optional(),
+    required: z.array(z.string()).optional(),
+  }).passthrough(),
+  outputSchema: z.object({
+    type: z.literal('object'),
+    properties: z.record(z.string(), z.unknown()).optional(),
+    required: z.array(z.string()).optional(),
+  }).passthrough().optional(),
+  annotations: z.object({
+    title: z.string().optional(),
+    readOnlyHint: z.boolean().optional(),
+    destructiveHint: z.boolean().optional(),
+    idempotentHint: z.boolean().optional(),
+    openWorldHint: z.boolean().optional(),
+  }).optional(),
+  // Registry metadata
   serverId: z.string(),
   serverName: z.string(),
-  name: z.string(),
-  title: z.string().optional(),
-  description: z.string().optional(),
-  inputSchema: z.unknown(), // JSON Schema or Zod schema
-  outputSchema: z.unknown().optional(),
 });
-
-export type MCPRegisteredTool = z.infer<typeof MCPRegisteredToolSchema>;
 
 export const MCPRegisteredResourceSchema = z.object({
-  serverId: z.string(),
-  serverName: z.string(),
+  // SDK Resource fields
   uri: z.string(),
   name: z.string(),
-  title: z.string().optional(),
   description: z.string().optional(),
   mimeType: z.string().optional(),
-});
-
-export type MCPRegisteredResource = z.infer<typeof MCPRegisteredResourceSchema>;
-
-export const MCPRegisteredPromptSchema = z.object({
+  // Registry metadata
   serverId: z.string(),
   serverName: z.string(),
+});
+
+export const MCPRegisteredPromptSchema = z.object({
+  // SDK Prompt fields
   name: z.string(),
-  title: z.string().optional(),
   description: z.string().optional(),
   arguments: z.array(z.object({
     name: z.string(),
     description: z.string().optional(),
     required: z.boolean().optional(),
   })).optional(),
+  // Registry metadata
+  serverId: z.string(),
+  serverName: z.string(),
 });
 
-export type MCPRegisteredPrompt = z.infer<typeof MCPRegisteredPromptSchema>;
-
-// Type aliases for SDK compatibility
-export type MCPToolDefinition = MCPRegisteredTool;
-export type MCPResourceDefinition = MCPRegisteredResource;
-export type MCPPromptDefinition = MCPRegisteredPrompt;
+// Re-export SDK types for convenience
+export type {
+  Tool,
+  Resource,
+  Prompt,
+  PromptMessage,
+  CallToolResult,
+  ResourceContents,
+  GetPromptResult,
+  SamplingMessage,
+  CreateMessageRequest,
+  CreateMessageResult,
+  Root,
+  LoggingLevel,
+};
 
 // Server provider mode (for server mode status)
 export interface MCPServerProviderMode {

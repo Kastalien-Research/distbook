@@ -12,8 +12,8 @@
 
 import type {
   MCPServerConfig,
-  MCPToolDefinition,
-  MCPResourceDefinition,
+  MCPRegisteredTool,
+  MCPRegisteredResource,
 } from '@srcbook/shared';
 
 // =============================================================================
@@ -146,8 +146,8 @@ export class MockMCPServer {
 export function createMockClient(
   tools: Array<{ name: string; inputSchema?: object }> = [],
 ): {
-  listTools: () => Promise<{ tools: MCPToolDefinition[] }>;
-  listResources: () => Promise<{ resources: MCPResourceDefinition[] }>;
+  listTools: () => Promise<{ tools: MCPRegisteredTool[] }>;
+  listResources: () => Promise<{ resources: MCPRegisteredResource[] }>;
   callTool: (name: string, args: Record<string, unknown>) => Promise<unknown>;
 } {
   return {

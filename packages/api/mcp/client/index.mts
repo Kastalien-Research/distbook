@@ -18,9 +18,9 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 import type {
   MCPServerConfig,
   MCPConnectionStatus,
-  MCPToolDefinition,
-  MCPResourceDefinition,
-  MCPPromptDefinition,
+  MCPRegisteredTool,
+  MCPRegisteredResource,
+  MCPRegisteredPrompt,
 } from '@srcbook/shared';
 
 // =============================================================================
@@ -33,9 +33,9 @@ export interface MCPClientConnection {
   transport: StdioClientTransport | StreamableHTTPClientTransport;
   status: MCPConnectionStatus;
   capabilities: ServerCapabilities | null;
-  tools: MCPToolDefinition[];
-  resources: MCPResourceDefinition[];
-  prompts: MCPPromptDefinition[];
+  tools: MCPRegisteredTool[];
+  resources: MCPRegisteredResource[];
+  prompts: MCPRegisteredPrompt[];
   lastError?: string;
   connectedAt?: Date;
   lastActivityAt?: Date;
@@ -51,9 +51,9 @@ export interface ServerCapabilities {
 export interface MCPClientState {
   connections: Map<string, MCPClientConnection>;
   registry: {
-    tools: Map<string, { serverId: string; tool: MCPToolDefinition }>;
-    resources: Map<string, { serverId: string; resource: MCPResourceDefinition }>;
-    prompts: Map<string, { serverId: string; prompt: MCPPromptDefinition }>;
+    tools: Map<string, { serverId: string; tool: MCPRegisteredTool }>;
+    resources: Map<string, { serverId: string; resource: MCPRegisteredResource }>;
+    prompts: Map<string, { serverId: string; prompt: MCPRegisteredPrompt }>;
   };
 }
 
@@ -361,21 +361,21 @@ function unregisterServerCapabilities(serverId: string): void {
 /**
  * Get all tools from all connected servers
  */
-export function getAllTools(): Array<{ serverId: string; tool: MCPToolDefinition }> {
+export function getAllTools(): Array<{ serverId: string; tool: MCPRegisteredTool }> {
   return Array.from(clientState.registry.tools.values());
 }
 
 /**
  * Get all resources from all connected servers
  */
-export function getAllResources(): Array<{ serverId: string; resource: MCPResourceDefinition }> {
+export function getAllResources(): Array<{ serverId: string; resource: MCPRegisteredResource }> {
   return Array.from(clientState.registry.resources.values());
 }
 
 /**
  * Get all prompts from all connected servers
  */
-export function getAllPrompts(): Array<{ serverId: string; prompt: MCPPromptDefinition }> {
+export function getAllPrompts(): Array<{ serverId: string; prompt: MCPRegisteredPrompt }> {
   return Array.from(clientState.registry.prompts.values());
 }
 
@@ -385,7 +385,7 @@ export function getAllPrompts(): Array<{ serverId: string; prompt: MCPPromptDefi
 export function findTool(
   toolName: string,
   serverId?: string,
-): { serverId: string; tool: MCPToolDefinition } | undefined {
+): { serverId: string; tool: MCPRegisteredTool } | undefined {
   if (serverId) {
     return clientState.registry.tools.get(`${serverId}:${toolName}`);
   }

@@ -11,9 +11,9 @@
 
 import type {
   MCPCapabilityRegistry,
-  MCPToolDefinition,
-  MCPResourceDefinition,
-  MCPPromptDefinition,
+  MCPRegisteredTool,
+  MCPRegisteredResource,
+  MCPRegisteredPrompt,
   MCPServerConfig,
 } from '@srcbook/shared';
 
@@ -22,9 +22,9 @@ import type {
 // =============================================================================
 
 interface RegistryState {
-  tools: Map<string, MCPToolDefinition[]>; // serverId -> tools
-  resources: Map<string, MCPResourceDefinition[]>; // serverId -> resources
-  prompts: Map<string, MCPPromptDefinition[]>; // serverId -> prompts
+  tools: Map<string, MCPRegisteredTool[]>; // serverId -> tools
+  resources: Map<string, MCPRegisteredResource[]>; // serverId -> resources
+  prompts: Map<string, MCPRegisteredPrompt[]>; // serverId -> prompts
   servers: Map<string, MCPServerConfig>; // serverId -> config
   lastUpdated: Date;
 }
@@ -49,15 +49,15 @@ export function getCapabilityRegistry(): MCPCapabilityRegistry {
     tools: getAllTools(),
     resources: getAllResources(),
     prompts: getAllPrompts(),
-    lastUpdated: registry.lastUpdated,
+    lastUpdated: registry.lastUpdated.toISOString(),
   };
 }
 
 /**
  * Get all tools from all sources
  */
-export function getAllTools(): MCPToolDefinition[] {
-  const allTools: MCPToolDefinition[] = [];
+export function getAllTools(): MCPRegisteredTool[] {
+  const allTools: MCPRegisteredTool[] = [];
   for (const tools of registry.tools.values()) {
     allTools.push(...tools);
   }
@@ -67,15 +67,15 @@ export function getAllTools(): MCPToolDefinition[] {
 /**
  * Get tools from a specific server
  */
-export function getToolsForServer(serverId: string): MCPToolDefinition[] {
+export function getToolsForServer(serverId: string): MCPRegisteredTool[] {
   return registry.tools.get(serverId) || [];
 }
 
 /**
  * Get all resources from all sources
  */
-export function getAllResources(): MCPResourceDefinition[] {
-  const allResources: MCPResourceDefinition[] = [];
+export function getAllResources(): MCPRegisteredResource[] {
+  const allResources: MCPRegisteredResource[] = [];
   for (const resources of registry.resources.values()) {
     allResources.push(...resources);
   }
@@ -85,15 +85,15 @@ export function getAllResources(): MCPResourceDefinition[] {
 /**
  * Get resources from a specific server
  */
-export function getResourcesForServer(serverId: string): MCPResourceDefinition[] {
+export function getResourcesForServer(serverId: string): MCPRegisteredResource[] {
   return registry.resources.get(serverId) || [];
 }
 
 /**
  * Get all prompts from all sources
  */
-export function getAllPrompts(): MCPPromptDefinition[] {
-  const allPrompts: MCPPromptDefinition[] = [];
+export function getAllPrompts(): MCPRegisteredPrompt[] {
+  const allPrompts: MCPRegisteredPrompt[] = [];
   for (const prompts of registry.prompts.values()) {
     allPrompts.push(...prompts);
   }
@@ -103,7 +103,7 @@ export function getAllPrompts(): MCPPromptDefinition[] {
 /**
  * Get prompts from a specific server
  */
-export function getPromptsForServer(serverId: string): MCPPromptDefinition[] {
+export function getPromptsForServer(serverId: string): MCPRegisteredPrompt[] {
   return registry.prompts.get(serverId) || [];
 }
 
@@ -114,7 +114,7 @@ export function getPromptsForServer(serverId: string): MCPPromptDefinition[] {
 /**
  * Register tools from a server
  */
-export function registerTools(serverId: string, tools: MCPToolDefinition[]): void {
+export function registerTools(serverId: string, tools: MCPRegisteredTool[]): void {
   registry.tools.set(serverId, tools);
   registry.lastUpdated = new Date();
 
@@ -124,7 +124,7 @@ export function registerTools(serverId: string, tools: MCPToolDefinition[]): voi
 /**
  * Register resources from a server
  */
-export function registerResources(serverId: string, resources: MCPResourceDefinition[]): void {
+export function registerResources(serverId: string, resources: MCPRegisteredResource[]): void {
   registry.resources.set(serverId, resources);
   registry.lastUpdated = new Date();
 
@@ -134,7 +134,7 @@ export function registerResources(serverId: string, resources: MCPResourceDefini
 /**
  * Register prompts from a server
  */
-export function registerPrompts(serverId: string, prompts: MCPPromptDefinition[]): void {
+export function registerPrompts(serverId: string, prompts: MCPRegisteredPrompt[]): void {
   registry.prompts.set(serverId, prompts);
   registry.lastUpdated = new Date();
 
@@ -171,7 +171,7 @@ export function unregisterServer(serverId: string): void {
 /**
  * Find a tool by name (searches all servers)
  */
-export function findTool(name: string): MCPToolDefinition | undefined {
+export function findTool(name: string): MCPRegisteredTool | undefined {
   for (const tools of registry.tools.values()) {
     const tool = tools.find((t) => t.name === name);
     if (tool) return tool;
@@ -182,7 +182,7 @@ export function findTool(name: string): MCPToolDefinition | undefined {
 /**
  * Find a resource by URI pattern (searches all servers)
  */
-export function findResource(uri: string): MCPResourceDefinition | undefined {
+export function findResource(uri: string): MCPRegisteredResource | undefined {
   for (const resources of registry.resources.values()) {
     // Simple prefix matching - could be enhanced for templates
     const resource = resources.find((r) => uri.startsWith(r.uri.split('{')[0]));
@@ -214,31 +214,51 @@ export function initializeRegistry(): void {
       name: 'srcbook_execute_cell',
       description: 'Execute a code cell in a Srcbook notebook',
       serverId: SRCBOOK_SERVER_ID,
-      inputSchema: {},
+      serverName: 'Srcbook',
+      inputSchema: {
+        type: 'object' as const,
+        properties: {},
+      },
     },
     {
       name: 'srcbook_create_cell',
       description: 'Create a new cell in a Srcbook notebook',
       serverId: SRCBOOK_SERVER_ID,
-      inputSchema: {},
+      serverName: 'Srcbook',
+      inputSchema: {
+        type: 'object' as const,
+        properties: {},
+      },
     },
     {
       name: 'srcbook_update_cell',
       description: 'Update an existing cell in a Srcbook notebook',
       serverId: SRCBOOK_SERVER_ID,
-      inputSchema: {},
+      serverName: 'Srcbook',
+      inputSchema: {
+        type: 'object' as const,
+        properties: {},
+      },
     },
     {
       name: 'srcbook_delete_cell',
       description: 'Delete a cell from a Srcbook notebook',
       serverId: SRCBOOK_SERVER_ID,
-      inputSchema: {},
+      serverName: 'Srcbook',
+      inputSchema: {
+        type: 'object' as const,
+        properties: {},
+      },
     },
     {
       name: 'srcbook_generate_cell',
       description: 'AI-generate a new cell based on a prompt',
       serverId: SRCBOOK_SERVER_ID,
-      inputSchema: {},
+      serverName: 'Srcbook',
+      inputSchema: {
+        type: 'object' as const,
+        properties: {},
+      },
     },
   ]);
 
@@ -249,6 +269,7 @@ export function initializeRegistry(): void {
       uri: 'srcbook://sessions',
       description: 'List of active notebook sessions',
       serverId: SRCBOOK_SERVER_ID,
+      serverName: 'Srcbook',
       mimeType: 'application/json',
     },
   ]);
@@ -259,16 +280,19 @@ export function initializeRegistry(): void {
       name: 'srcbook_new_notebook',
       description: 'Create a new notebook from a description',
       serverId: SRCBOOK_SERVER_ID,
+      serverName: 'Srcbook',
     },
     {
       name: 'srcbook_analyze_data',
       description: 'Create a data analysis notebook',
       serverId: SRCBOOK_SERVER_ID,
+      serverName: 'Srcbook',
     },
     {
       name: 'srcbook_api_client',
       description: 'Create an API integration notebook',
       serverId: SRCBOOK_SERVER_ID,
+      serverName: 'Srcbook',
     },
   ]);
 
