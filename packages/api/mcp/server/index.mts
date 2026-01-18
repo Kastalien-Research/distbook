@@ -17,6 +17,8 @@ import type { MCPServerProviderMode } from '@srcbook/shared';
 import { registerNotebookTools } from './tools.mjs';
 import { registerNotebookResources } from './resources.mjs';
 import { registerNotebookPrompts } from './prompts.mjs';
+import { logger, progressTracker, paginator } from '../utilities/index.mjs';
+import { taskManager } from '../tasks/index.mjs';
 
 // =============================================================================
 // Constants
@@ -47,6 +49,12 @@ export interface MCPServerInstance {
   status: MCPServerProviderMode['status'];
   connectedClients: Map<string, ConnectedClient>;
   startedAt: Date | null;
+  utilities: {
+    logger: typeof logger;
+    progress: typeof progressTracker;
+    paginator: typeof paginator;
+    tasks: typeof taskManager;
+  };
 }
 
 export interface ConnectedClient {
@@ -135,6 +143,12 @@ export async function initializeMCPServer(
     status: 'stopped',
     connectedClients: new Map(),
     startedAt: null,
+    utilities: {
+      logger,
+      progress: progressTracker,
+      paginator,
+      tasks: taskManager,
+    },
   };
 
   console.log('[MCP Server] Initialized successfully');
@@ -305,3 +319,5 @@ export function getConnectedClients(): ConnectedClient[] {
 export { registerNotebookTools } from './tools.mjs';
 export { registerNotebookResources, subscribeToResource, unsubscribeFromResource } from './resources.mjs';
 export { registerNotebookPrompts } from './prompts.mjs';
+export { logger, progressTracker, paginator } from '../utilities/index.mjs';
+export { taskManager } from '../tasks/index.mjs';

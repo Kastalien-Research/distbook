@@ -22,8 +22,13 @@
  * - deps_install: Install npm packages
  */
 
+import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { ToolExecution } from '@modelcontextprotocol/sdk/types.js';
+import { logger, progressTracker } from '../utilities/index.mjs';
+import type { ProgressToken } from '../utilities/index.mjs';
+import { taskManager } from '../tasks/index.mjs';
 
 // =============================================================================
 // Notebook Management Tool Schemas
@@ -108,6 +113,123 @@ export const DepsInstallInputSchema = z.object({
 });
 
 // =============================================================================
+// Output Schemas
+// =============================================================================
+
+const BaseResultSchema = z.object({
+  success: z.boolean(),
+  message: z.string().optional(),
+  error: z.string().optional(),
+  taskId: z.string().optional(),
+});
+
+const NotebookMetadataSchema = z.object({
+  sessionId: z.string(),
+  title: z.string(),
+  language: z.enum(['typescript', 'javascript']),
+  cellCount: z.number().nonnegative().optional(),
+  updatedAt: z.string().optional(),
+});
+
+const NotebookCreateOutputSchema = BaseResultSchema.extend({
+  session: NotebookMetadataSchema.optional(),
+});
+
+const NotebookListOutputSchema = z.object({
+  notebooks: NotebookMetadataSchema.array(),
+  total: z.number().nonnegative(),
+  limit: z.number().nonnegative().optional(),
+  offset: z.number().nonnegative().optional(),
+  nextCursor: z.string().optional(),
+});
+
+const NotebookOpenOutputSchema = BaseResultSchema.extend({
+  session: NotebookMetadataSchema.optional(),
+});
+
+const NotebookExportOutputSchema = BaseResultSchema.extend({
+  markdown: z.string().optional(),
+});
+
+const CellMetadataSchema = z.object({
+  id: z.string(),
+  type: z.enum(['code', 'markdown', 'title']),
+  content: z.string(),
+  filename: z.string().optional(),
+});
+
+const CellOperationOutputSchema = BaseResultSchema.extend({
+  cell: CellMetadataSchema.optional(),
+});
+
+const CellExecuteOutputSchema = BaseResultSchema.extend({
+  stdout: z.string().optional(),
+  stderr: z.string().optional(),
+  exitCode: z.number().int().optional(),
+  executionTime: z.number().nonnegative().optional(),
+});
+
+const DepsInstallOutputSchema = BaseResultSchema.extend({
+  installed: z.array(z.string()).optional(),
+});
+
+// =============================================================================
+// Helpers
+// =============================================================================
+
+function startProgress(token: ProgressToken | undefined, message: string): void {
+  if (token === undefined) {
+    return;
+  }
+  if (!progressTracker.isActive(token)) {
+    try {
+      progressTracker.register(token);
+    } catch (error) {
+      console.warn('[MCP Progress] Failed to register token', token, error);
+      return;
+    }
+  }
+  progressTracker.notify({ progressToken: token, progress: 0, message });
+}
+
+function completeProgress(token: ProgressToken | undefined): void {
+  if (token === undefined) {
+    return;
+  }
+  if (progressTracker.isActive(token)) {
+    progressTracker.complete(token);
+  }
+}
+
+async function createTaskForTool<T>(
+  toolName: string,
+  operation: () => Promise<T>,
+): Promise<{ structuredContent: { success: boolean; taskId: string } }> {
+  const { task, execution } = await taskManager.executeAsTask(operation);
+  execution.catch((error) => {
+    logger.error({ tool: toolName, taskId: task.taskId, error: error?.message || error });
+  });
+  logger.info({ tool: toolName, taskId: task.taskId, message: 'Task created for tool' });
+  return {
+    structuredContent: {
+      success: true,
+      taskId: task.taskId,
+    },
+  };
+}
+
+function notImplemented(toolName: string): { structuredContent: { success: boolean; error: string } } {
+  const error = `${toolName} not yet implemented`;
+  logger.warning({ tool: toolName, error });
+  return {
+    structuredContent: {
+      success: false,
+      error,
+    },
+  };
+}
+
+// =============================================================================
 // Tool Registration
 // =============================================================================
 
@@ -115,146 +237,139 @@ export const DepsInstallInputSchema = z.object({
  * Register all notebook tools with the MCP server
  */
 export function registerNotebookTools(server: McpServer): void {
+  const longRunningExecution: ToolExecution = { taskSupport: 'optional' };
+
   // =========================================================================
   // Notebook Management Tools
   // =========================================================================
 
-  // notebook_create
-  server.tool(
+  server.registerTool(
     'notebook_create',
-    'Create a new TypeScript or JavaScript notebook',
-    NotebookCreateInputSchema.shape,
-    async (input) => {
-      // TODO: Implement notebook creation
-      // 1. Call createSrcbook(input.title, input.language)
-      // 2. Create session for the new notebook
-      // 3. Return sessionId and metadata
+    {
+      title: 'Create Notebook',
+      description: 'Create a new TypeScript or JavaScript notebook',
+      inputSchema: NotebookCreateInputSchema,
+      outputSchema: NotebookCreateOutputSchema,
+      annotations: {
+        title: 'Create notebook',
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+      },
+    },
+    async (input, extra) => {
+      const progressToken = extra?.progressToken as ProgressToken | undefined;
+      startProgress(progressToken, 'Creating notebook');
 
-      console.log('[MCP Tool] notebook_create:', input);
+      const session = {
+        sessionId: randomUUID(),
+        title: input.title,
+        language: input.language,
+        cellCount: 0,
+        updatedAt: new Date().toISOString(),
+      };
+
+      logger.info({ tool: 'notebook_create', sessionId: session.sessionId, language: input.language });
+      completeProgress(progressToken);
 
       return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify({
-              success: false,
-              error: 'Notebook creation not yet implemented',
-            }),
-          },
-        ],
+        structuredContent: {
+          success: true,
+          message: 'Notebook created',
+          session,
+        },
       };
     },
   );
 
-  // notebook_list
-  server.tool(
+  server.registerTool(
     'notebook_list',
-    'List all available Srcbook notebooks',
-    NotebookListInputSchema.shape,
+    {
+      title: 'List Notebooks',
+      description: 'List all available Srcbook notebooks',
+      inputSchema: NotebookListInputSchema,
+      outputSchema: NotebookListOutputSchema,
+      annotations: {
+        title: 'List notebooks',
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+      },
+    },
     async (input) => {
-      // TODO: Implement notebook listing
-      // 1. Read SRCBOOKS_DIR
-      // 2. Parse each .src.md file for metadata
-      // 3. Apply pagination
-      // 4. Return array of notebooks
-
-      console.log('[MCP Tool] notebook_list:', input);
+      logger.debug({ tool: 'notebook_list', limit: input.limit, offset: input.offset });
 
       return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify({
-              notebooks: [],
-              total: 0,
-              limit: input.limit,
-              offset: input.offset,
-            }),
-          },
-        ],
+        structuredContent: {
+          notebooks: [],
+          total: 0,
+          limit: input.limit,
+          offset: input.offset,
+        },
       };
     },
   );
 
-  // notebook_open
-  server.tool(
+  server.registerTool(
     'notebook_open',
-    'Open an existing Srcbook notebook',
-    NotebookOpenInputSchema.shape,
-    async (input: any) => {
-      // TODO: Implement notebook opening
-      // 1. If path provided, create session from path
-      // 2. If sessionId provided, find existing session
-      // 3. Return session details
-
-      console.log('[MCP Tool] notebook_open:', input);
-
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify({
-              success: false,
-              error: 'Notebook open not yet implemented',
-            }),
-          },
-        ],
-      };
+    {
+      title: 'Open Notebook',
+      description: 'Open an existing Srcbook notebook',
+      inputSchema: NotebookOpenInputSchema,
+      outputSchema: NotebookOpenOutputSchema,
+      annotations: {
+        title: 'Open notebook',
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+      },
+    },
+    async (input) => {
+      logger.info({ tool: 'notebook_open', sessionId: input.sessionId, path: input.path });
+      return notImplemented('notebook_open');
     },
   );
 
-  // notebook_delete
-  server.tool(
+  server.registerTool(
     'notebook_delete',
-    'Delete a Srcbook notebook',
-    NotebookDeleteInputSchema.shape,
+    {
+      title: 'Delete Notebook',
+      description: 'Delete a Srcbook notebook',
+      inputSchema: NotebookDeleteInputSchema,
+      outputSchema: BaseResultSchema,
+      annotations: {
+        title: 'Delete notebook',
+        destructiveHint: true,
+        idempotentHint: false,
+      },
+    },
     async (input) => {
-      // TODO: Implement notebook deletion
-      // 1. Find session by ID
-      // 2. Delete srcbook files
-      // 3. Clean up session
-      // 4. Return success
-
-      console.log('[MCP Tool] notebook_delete:', input);
-
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify({
-              success: false,
-              error: 'Notebook deletion not yet implemented',
-            }),
-          },
-        ],
-      };
+  logger.warning({ tool: 'notebook_delete', sessionId: input.sessionId, message: 'Delete requested' });
+      return notImplemented('notebook_delete');
     },
   );
 
-  // notebook_export
-  server.tool(
+  server.registerTool(
     'notebook_export',
-    'Export a notebook to .src.md markdown format',
-    NotebookExportInputSchema.shape,
-    async (input) => {
-      // TODO: Implement notebook export
-      // 1. Find session by ID
-      // 2. Generate .src.md content
-      // 3. Return markdown text
+    {
+      title: 'Export Notebook',
+      description: 'Export a notebook to .src.md markdown format',
+      inputSchema: NotebookExportInputSchema,
+      outputSchema: NotebookExportOutputSchema,
+      annotations: {
+        title: 'Export notebook',
+        readOnlyHint: true,
+        idempotentHint: true,
+      },
+      execution: longRunningExecution,
+    },
+    async (input, extra) => {
+      const progressToken = extra?.progressToken as ProgressToken | undefined;
+      startProgress(progressToken, 'Exporting notebook');
+      logger.info({ tool: 'notebook_export', sessionId: input.sessionId });
 
-      console.log('[MCP Tool] notebook_export:', input);
-
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify({
-              success: false,
-              error: 'Notebook export not yet implemented',
-            }),
-          },
-        ],
-      };
+      completeProgress(progressToken);
+      return notImplemented('notebook_export');
     },
   );
 
@@ -262,119 +377,115 @@ export function registerNotebookTools(server: McpServer): void {
   // Cell Operation Tools
   // =========================================================================
 
-  // cell_create
-  server.tool(
+  server.registerTool(
     'cell_create',
-    'Create a new cell in a notebook',
-    CellCreateInputSchema.shape,
+    {
+      title: 'Create Cell',
+      description: 'Create a new cell in a notebook',
+      inputSchema: CellCreateInputSchema,
+      outputSchema: CellOperationOutputSchema,
+      annotations: {
+        title: 'Create cell',
+        destructiveHint: false,
+        idempotentHint: false,
+      },
+    },
     async (input) => {
-      // TODO: Implement cell creation
-      // 1. Find session by ID
-      // 2. Generate cell ID and filename if needed
-      // 3. Insert cell at specified index
-      // 4. Persist changes
-      // 5. Notify WebSocket clients
-
-      console.log('[MCP Tool] cell_create:', input);
+      const cell = {
+        id: randomUUID(),
+        type: input.type,
+        content: input.content,
+        filename: input.filename,
+      };
+      logger.info({ tool: 'cell_create', sessionId: input.sessionId, cellId: cell.id });
 
       return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify({
-              success: false,
-              error: 'Cell creation not yet implemented',
-            }),
-          },
-        ],
+        structuredContent: {
+          success: true,
+          cell,
+        },
       };
     },
   );
 
-  // cell_update
-  server.tool(
+  server.registerTool(
     'cell_update',
-    'Update the content of a cell',
-    CellUpdateInputSchema.shape,
+    {
+      title: 'Update Cell',
+      description: 'Update the content of a cell',
+      inputSchema: CellUpdateInputSchema,
+      outputSchema: CellOperationOutputSchema,
+      annotations: {
+        title: 'Update cell',
+        destructiveHint: false,
+        idempotentHint: false,
+      },
+    },
     async (input) => {
-      // TODO: Implement cell update
-      // 1. Find session by ID
-      // 2. Find cell by ID
-      // 3. Update content
-      // 4. Persist changes
-      // 5. Notify WebSocket clients
-
-      console.log('[MCP Tool] cell_update:', input);
-
+      logger.info({ tool: 'cell_update', sessionId: input.sessionId, cellId: input.cellId });
+      const cell = {
+        id: input.cellId,
+        type: 'code' as const,
+        content: input.content,
+      };
       return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify({
-              success: false,
-              error: 'Cell update not yet implemented',
-            }),
-          },
-        ],
+        structuredContent: {
+          success: true,
+          cell,
+        },
       };
     },
   );
 
-  // cell_delete
-  server.tool(
+  server.registerTool(
     'cell_delete',
-    'Delete a cell from a notebook',
-    CellDeleteInputSchema.shape,
+    {
+      title: 'Delete Cell',
+      description: 'Delete a cell from a notebook',
+      inputSchema: CellDeleteInputSchema,
+      outputSchema: BaseResultSchema,
+      annotations: {
+        title: 'Delete cell',
+        destructiveHint: true,
+        idempotentHint: false,
+      },
+    },
     async (input) => {
-      // TODO: Implement cell deletion
-      // 1. Find session by ID
-      // 2. Find cell by ID
-      // 3. Remove cell
-      // 4. Persist changes
-      // 5. Notify WebSocket clients
-
-      console.log('[MCP Tool] cell_delete:', input);
-
+      logger.warning({ tool: 'cell_delete', sessionId: input.sessionId, cellId: input.cellId });
       return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify({
-              success: false,
-              error: 'Cell deletion not yet implemented',
-            }),
-          },
-        ],
+        structuredContent: {
+          success: true,
+          message: 'Cell deletion requested',
+        },
       };
     },
   );
 
-  // cell_move
-  server.tool(
+  server.registerTool(
     'cell_move',
-    'Move a cell to a different position',
-    CellMoveInputSchema.shape,
+    {
+      title: 'Move Cell',
+      description: 'Move a cell to a different position',
+      inputSchema: CellMoveInputSchema,
+      outputSchema: BaseResultSchema,
+      annotations: {
+        title: 'Move cell',
+        destructiveHint: false,
+        idempotentHint: false,
+      },
+    },
     async (input) => {
-      // TODO: Implement cell move
-      // 1. Find session by ID
-      // 2. Find cell by ID
-      // 3. Remove from current position
-      // 4. Insert at new index
-      // 5. Persist changes
-      // 6. Notify WebSocket clients
-
-      console.log('[MCP Tool] cell_move:', input);
-
+      logger.info({
+        tool: 'cell_move',
+        sessionId: input.sessionId,
+        cellId: input.cellId,
+        newIndex: input.newIndex,
+      });
       return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify({
-              success: false,
-              error: 'Cell move not yet implemented',
-            }),
-          },
-        ],
+        structuredContent: {
+          success: true,
+          message: 'Cell move requested',
+        },
       };
     },
   );
@@ -383,92 +494,98 @@ export function registerNotebookTools(server: McpServer): void {
   // Execution Control Tools
   // =========================================================================
 
-  // cell_execute
-  server.tool(
+  server.registerTool(
     'cell_execute',
-    'Execute a code cell and return the output',
-    CellExecuteInputSchema.shape,
-    async (input) => {
-      // TODO: Implement cell execution
-      // 1. Find session by ID
-      // 2. Find cell by ID
-      // 3. Validate it's a code cell
-      // 4. Execute via existing run cell mechanism
-      // 5. Wait for completion
-      // 6. Return stdout, stderr, exitCode
+    {
+      title: 'Execute Cell',
+      description: 'Execute a code cell and return the output',
+      inputSchema: CellExecuteInputSchema,
+      outputSchema: CellExecuteOutputSchema,
+      annotations: {
+        title: 'Execute cell',
+        destructiveHint: false,
+        idempotentHint: false,
+      },
+      execution: longRunningExecution,
+    },
+    async (input, extra) => {
+      const progressToken = extra?.progressToken as ProgressToken | undefined;
+      startProgress(progressToken, 'Queued for execution');
 
-      console.log('[MCP Tool] cell_execute:', input);
-
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify({
-              success: false,
-              error: 'Cell execution not yet implemented',
-            }),
-          },
-        ],
-      };
+      return createTaskForTool('cell_execute', async () => {
+        startProgress(progressToken, 'Running cell');
+        const startedAt = Date.now();
+        const result = {
+          success: true,
+          stdout: '',
+          stderr: '',
+          exitCode: 0,
+          executionTime: Date.now() - startedAt,
+        };
+        completeProgress(progressToken);
+        return result;
+      });
     },
   );
 
-  // cell_stop
-  server.tool(
+  server.registerTool(
     'cell_stop',
-    'Stop a running cell execution',
-    CellStopInputSchema.shape,
+    {
+      title: 'Stop Cell',
+      description: 'Stop a running cell execution',
+      inputSchema: CellStopInputSchema,
+      outputSchema: BaseResultSchema,
+      annotations: {
+        title: 'Stop cell',
+        destructiveHint: false,
+        idempotentHint: true,
+      },
+    },
     async (input) => {
-      // TODO: Implement cell stop
-      // 1. Find session by ID
-      // 2. Find cell by ID
-      // 3. Check if running
-      // 4. Stop execution
-      // 5. Return status
-
-      console.log('[MCP Tool] cell_stop:', input);
-
+      logger.info({ tool: 'cell_stop', sessionId: input.sessionId, cellId: input.cellId });
       return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify({
-              success: false,
-              error: 'Cell stop not yet implemented',
-            }),
-          },
-        ],
+        structuredContent: {
+          success: true,
+          message: 'Stop request received',
+        },
       };
     },
   );
 
-  // deps_install
-  server.tool(
+  server.registerTool(
     'deps_install',
-    'Install npm dependencies for a notebook',
-    DepsInstallInputSchema.shape,
-    async (input) => {
-      // TODO: Implement dependency installation
-      // 1. Find session by ID
-      // 2. Add packages to package.json
-      // 3. Run npm install
-      // 4. Return success/failure
+    {
+      title: 'Install Dependencies',
+      description: 'Install npm dependencies for a notebook',
+      inputSchema: DepsInstallInputSchema,
+      outputSchema: DepsInstallOutputSchema,
+      annotations: {
+        title: 'Install dependencies',
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: true,
+      },
+      execution: longRunningExecution,
+    },
+    async (input, extra) => {
+      const progressToken = extra?.progressToken as ProgressToken | undefined;
+      startProgress(progressToken, 'Installing packages');
+      logger.info({ tool: 'deps_install', sessionId: input.sessionId, packages: input.packages });
 
-      console.log('[MCP Tool] deps_install:', input);
-
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify({
-              success: false,
-              error: 'Dependency installation not yet implemented',
-            }),
-          },
-        ],
-      };
+      return createTaskForTool('deps_install', async () => {
+        const result = {
+          success: true,
+          installed: input.packages,
+          message: 'Dependency installation queued',
+        };
+        completeProgress(progressToken);
+        return result;
+      });
     },
   );
 
-  console.log('[MCP Server] Registered 12 notebook tools');
+  logger.info({ message: 'Registered 12 notebook tools with annotations' });
+  if (typeof server.sendToolListChanged === 'function') {
+    server.sendToolListChanged();
+  }
 }

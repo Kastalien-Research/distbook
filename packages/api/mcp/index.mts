@@ -8,13 +8,13 @@
  * @see https://modelcontextprotocol.io/
  */
 
-// Server mode exports
-export * from './server/index.mjs';
+// Server mode exports (namespaced to avoid conflicts with client)
+export * as MCPServer from './server/index.mjs';
 
-// Client mode exports
-export * from './client/index.mjs';
+// Client mode exports (namespaced to avoid conflicts with server)
+export * as MCPClient from './client/index.mjs';
 
-// Registry exports
+// Registry exports (unified view of both client and server capabilities)
 export * from './registry/index.mjs';
 
 // Security exports
