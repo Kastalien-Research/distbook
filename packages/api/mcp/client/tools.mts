@@ -9,7 +9,7 @@
  */
 
 import { getConnection } from './index.mjs';
-import type { MCPToolInvocation } from '@srcbook/shared';
+// Note: MCPToolInvocation type available from @srcbook/shared for audit logging (TODO)
 
 // =============================================================================
 // Types
@@ -177,7 +177,7 @@ export async function invokeToolWithApproval(
 /**
  * Check if a tool requires approval based on configuration
  */
-export function requiresApproval(serverId: string, toolName: string): boolean {
+export function requiresApproval(_serverId: string, _toolName: string): boolean {
   // TODO: Check against allowlist/blocklist configuration
   // For now, return true for all tools (require approval)
   return true;

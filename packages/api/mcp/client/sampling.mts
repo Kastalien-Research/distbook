@@ -53,7 +53,7 @@ export function getSamplingServers(): SamplingServer[] {
  */
 export function getPreferredSamplingServer(): SamplingServer | null {
   const servers = getSamplingServers();
-  return servers.length > 0 ? servers[0] : null;
+  return servers.length > 0 ? servers[0]! : null;
 }
 
 // =============================================================================
@@ -64,7 +64,7 @@ export function getPreferredSamplingServer(): SamplingServer | null {
  * Create a sampling message (LLM completion) via MCP
  */
 export async function createSamplingMessage(
-  request: MCPSamplingRequest,
+  _request: MCPSamplingRequest,
   serverId?: string,
 ): Promise<MCPSamplingResponse> {
   // Find a sampling server
@@ -108,7 +108,7 @@ export async function createSamplingMessage(
       text: 'Sampling not yet implemented',
     },
     model: 'unknown',
-    stopReason: 'error',
+    stopReason: 'endTurn',
   };
 }
 
@@ -143,7 +143,7 @@ export async function createSamplingMessageWithFallback(
  */
 export async function samplingForGeneration(
   prompt: string,
-  context?: string,
+  _context?: string,
 ): Promise<string | null> {
   if (!isSamplingAvailable()) {
     console.log('[MCP Sampling] No sampling server available, using direct API');
@@ -161,7 +161,7 @@ export async function samplingForGeneration(
           },
         },
       ],
-      includeContext: context ? 'thisServer' : undefined,
+      maxTokens: 4096,
     };
 
     const response = await createSamplingMessage(request);
@@ -188,7 +188,6 @@ export function buildSamplingRequest(
   messages: MCPSamplingRequest['messages'],
   options: {
     systemPrompt?: string;
-    temperature?: number;
     maxTokens?: number;
     modelPreferences?: MCPSamplingRequest['modelPreferences'];
   } = {},
@@ -196,9 +195,8 @@ export function buildSamplingRequest(
   return {
     messages,
     systemPrompt: options.systemPrompt,
-    temperature: options.temperature,
     maxTokens: options.maxTokens || 4096,
     modelPreferences: options.modelPreferences,
-    includeContext: 'thisServer',
+    // Note: temperature and includeContext available in schema
   };
 }

@@ -7,12 +7,11 @@
  * @see 04-mcp-testing.md section 5 for requirements
  */
 
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import {
   startSrcbookWithMCP,
   TestAgent,
   generateTestData,
-  sleep,
   type TestSrcbookInstance,
 } from '../utils.mjs';
 
@@ -68,13 +67,13 @@ describe('Autonomous Agent Scenarios', () => {
       expect(analysisCell.cellId).toBeDefined();
 
       // Agent executes analysis
-      const result = await agent.execute<{ stdout: string }>('cell_execute', {
+      await agent.execute<{ stdout: string }>('cell_execute', {
         sessionId: notebook.sessionId,
         cellId: analysisCell.cellId,
       });
 
       // TODO: When connected to real implementation
-      // expect(result.stdout).toContain('Total:');
+      // const result = await agent.execute... then expect(result.stdout).toContain('Total:');
       expect(true).toBe(true);
     });
 
@@ -133,13 +132,13 @@ describe('Autonomous Agent Scenarios', () => {
       });
 
       // First execution fails
-      const result1 = await agent.execute<{ exitCode: number }>('cell_execute', {
+      await agent.execute<{ exitCode: number }>('cell_execute', {
         sessionId: notebook.sessionId,
         cellId: cell.cellId,
       });
 
       // TODO: When connected to real implementation
-      // expect(result1.exitCode).not.toBe(0);
+      // const result1 = await agent.execute... then expect(result1.exitCode).not.toBe(0);
 
       // Agent fixes the code
       await agent.execute('cell_update', {
@@ -149,13 +148,13 @@ describe('Autonomous Agent Scenarios', () => {
       });
 
       // Retry succeeds
-      const result2 = await agent.execute<{ exitCode: number; stdout: string }>('cell_execute', {
+      await agent.execute<{ exitCode: number; stdout: string }>('cell_execute', {
         sessionId: notebook.sessionId,
         cellId: cell.cellId,
       });
 
       // TODO: When connected to real implementation
-      // expect(result2.exitCode).toBe(0);
+      // const result2 = await agent.execute... then expect(result2.exitCode).toBe(0);
       // expect(result2.stdout).toContain('2');
       expect(true).toBe(true);
     });
@@ -175,7 +174,7 @@ describe('Autonomous Agent Scenarios', () => {
       });
 
       // Execution fails due to missing dep
-      const result1 = await agent.execute<{ exitCode: number }>('cell_execute', {
+      await agent.execute<{ exitCode: number }>('cell_execute', {
         sessionId: notebook.sessionId,
         cellId: cell.cellId,
       });
@@ -187,13 +186,13 @@ describe('Autonomous Agent Scenarios', () => {
       });
 
       // Retry succeeds
-      const result2 = await agent.execute<{ exitCode: number }>('cell_execute', {
+      await agent.execute<{ exitCode: number }>('cell_execute', {
         sessionId: notebook.sessionId,
         cellId: cell.cellId,
       });
 
       // TODO: When connected to real implementation
-      // expect(result2.exitCode).toBe(0);
+      // const result2 = await agent.execute... then expect(result2.exitCode).toBe(0);
       expect(true).toBe(true);
     });
 
@@ -210,7 +209,7 @@ describe('Autonomous Agent Scenarios', () => {
       });
 
       // Create cell fails on deleted session
-      const result = await agent.execute<{ error?: string }>('cell_create', {
+      await agent.execute<{ error?: string }>('cell_create', {
         sessionId: notebook.sessionId,
         type: 'code',
         content: 'test',

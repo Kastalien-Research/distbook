@@ -160,7 +160,7 @@ export async function unsubscribeFromResource(subscriptionId: string): Promise<b
 /**
  * Handle resource change notification from an external server
  */
-export function handleResourceChange(serverId: string, uri: string, content: unknown): void {
+export function handleResourceChange(serverId: string, uri: string, _content: unknown): void {
   // Find subscriptions for this resource
   const subscriptions = Array.from(activeSubscriptions.values()).filter(
     (sub) => sub.serverId === serverId && sub.uri === uri && sub.active,

@@ -6,9 +6,8 @@
  * @see 04-mcp-testing.md section 3.2 for requirements
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import {
-  MockMCPServer,
   createMockClient,
   startMockMCPServer,
 } from '../utils.mjs';
@@ -270,7 +269,7 @@ describe('CapabilityRegistry', () => {
 
     const tools = registry.listTools();
     expect(tools).toHaveLength(2);
-    expect(tools[0].serverId).not.toBe(tools[1].serverId);
+    expect(tools[0]!.serverId).not.toBe(tools[1]!.serverId);
   });
 
   it('finds tool by name', async () => {
@@ -437,7 +436,7 @@ describe('Auto-Connect', () => {
     const autoConnectServers = configs.filter((c) => c.autoConnect && c.enabled);
 
     expect(autoConnectServers).toHaveLength(1);
-    expect(autoConnectServers[0].name).toBe('server1');
+    expect(autoConnectServers[0]!.name).toBe('server1');
   });
 });
 

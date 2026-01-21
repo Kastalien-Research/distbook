@@ -132,39 +132,43 @@ export async function connectToMCPServer(config: MCPServerConfig): Promise<MCPCl
   clientState.connections.set(config.id, connection);
 
   try {
-    // TODO: Create transport based on type
+    let transport: StdioClientTransport | StreamableHTTPClientTransport;
+
+    // Create transport based on type
     if (config.transport === 'stdio') {
-      // Create stdio transport
-      // const transport = new StdioClientTransport({
-      //   command: config.command!,
-      //   args: config.args,
-      //   env: config.env,
-      // });
-      // connection.transport = transport;
-      // await client.connect(transport);
-      console.log('[MCP Client] Stdio transport not yet fully implemented');
+      if (!config.command) {
+        throw new Error('Stdio transport requires a command');
+      }
+      console.log('[MCP Client] Creating stdio transport:', config.command, config.args || []);
+      transport = new StdioClientTransport({
+        command: config.command,
+        args: config.args,
+        env: config.env,
+      });
     } else if (config.transport === 'http') {
-      // Create HTTP transport
-      // const transport = new StreamableHTTPClientTransport({
-      //   url: config.url!,
-      //   headers: config.headers,
-      // });
-      // connection.transport = transport;
-      // await client.connect(transport);
-      console.log('[MCP Client] HTTP transport not yet fully implemented');
+      if (!config.url) {
+        throw new Error('HTTP transport requires a URL');
+      }
+      console.log('[MCP Client] Creating HTTP transport:', config.url);
+      transport = new StreamableHTTPClientTransport(new URL(config.url));
+    } else {
+      throw new Error(`Unknown transport type: ${config.transport}`);
     }
 
-    // TODO: Get server capabilities after connection
-    // const initResult = await client.initialize();
-    // connection.capabilities = initResult.capabilities;
+    connection.transport = transport;
 
-    // TODO: Discover tools, resources, prompts
-    // await discoverCapabilities(connection);
+    // Connect to the server
+    await client.connect(transport);
+    console.log('[MCP Client] Transport connected');
 
-    connection.status = 'error';
-    connection.lastError = 'Transport connection not yet implemented';
+    // Discover tools, resources, prompts
+    await discoverCapabilities(connection);
 
-    console.log('[MCP Client] Connection setup pending implementation');
+    connection.status = 'connected';
+    connection.connectedAt = new Date();
+    connection.lastActivityAt = new Date();
+
+    console.log('[MCP Client] Successfully connected to:', config.name);
     return connection;
   } catch (error) {
     connection.status = 'error';
@@ -188,10 +192,10 @@ export async function disconnectFromMCPServer(serverId: string): Promise<void> {
   console.log('[MCP Client] Disconnecting from:', connection.config.name);
 
   try {
-    // TODO: Close transport
-    // if (connection.transport) {
-    //   await connection.transport.close();
-    // }
+    // Close the client connection
+    if (connection.client) {
+      await connection.client.close();
+    }
 
     // Remove capabilities from registry
     unregisterServerCapabilities(serverId);
@@ -202,6 +206,8 @@ export async function disconnectFromMCPServer(serverId: string): Promise<void> {
     connection.tools = [];
     connection.resources = [];
     connection.prompts = [];
+
+    console.log('[MCP Client] Disconnected from:', connection.config.name);
   } catch (error) {
     console.error('[MCP Client] Disconnect error:', error);
   }
@@ -256,35 +262,39 @@ export function getConnectionStatus(serverId: string): MCPConnectionStatus {
 // =============================================================================
 
 /**
- * Discover capabilities from a connected server
+ * Discover tools, resources, and prompts from a connected server
  */
 async function discoverCapabilities(connection: MCPClientConnection): Promise<void> {
   const { client, config } = connection;
   const serverId = config.id;
+  const serverName = config.name;
 
   console.log('[MCP Client] Discovering capabilities from:', config.name);
 
   try {
-    // TODO: List tools
-    // const toolsResult = await client.listTools();
-    // connection.tools = toolsResult.tools.map(tool => ({
-    //   ...tool,
-    //   serverId,
-    // }));
+    // List tools
+    const toolsResult = await client.listTools();
+    connection.tools = toolsResult.tools.map((tool) => ({
+      ...tool,
+      serverId,
+      serverName,
+    }));
 
-    // TODO: List resources
-    // const resourcesResult = await client.listResources();
-    // connection.resources = resourcesResult.resources.map(resource => ({
-    //   ...resource,
-    //   serverId,
-    // }));
+    // List resources
+    const resourcesResult = await client.listResources();
+    connection.resources = resourcesResult.resources.map((resource) => ({
+      ...resource,
+      serverId,
+      serverName,
+    }));
 
-    // TODO: List prompts
-    // const promptsResult = await client.listPrompts();
-    // connection.prompts = promptsResult.prompts.map(prompt => ({
-    //   ...prompt,
-    //   serverId,
-    // }));
+    // List prompts
+    const promptsResult = await client.listPrompts();
+    connection.prompts = promptsResult.prompts.map((prompt) => ({
+      ...prompt,
+      serverId,
+      serverName,
+    }));
 
     // Register in global registry
     registerServerCapabilities(connection);
@@ -300,11 +310,12 @@ async function discoverCapabilities(connection: MCPClientConnection): Promise<vo
     );
   } catch (error) {
     console.error('[MCP Client] Discovery failed:', error);
+    // Don't throw - connection is still valid even if discovery fails
   }
 }
 
 /**
- * Register server capabilities in global registry
+ * Register server capabilities in the global registry
  */
 function registerServerCapabilities(connection: MCPClientConnection): void {
   const serverId = connection.config.id;
@@ -430,3 +441,4 @@ export async function connectAutoConnectServers(
 export { invokeTool, invokeToolWithApproval, requiresApproval } from './tools.mjs';
 export { readResource, subscribeToResource, unsubscribeFromResource } from './resources.mjs';
 export { createSamplingMessage, isSamplingAvailable } from './sampling.mjs';
+export { loadMCPConfig, loadMCPConfigs, findConfigPath } from './config.mjs';
