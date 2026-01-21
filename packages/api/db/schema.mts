@@ -64,3 +64,88 @@ export const apps = sqliteTable('apps', {
 });
 
 export type App = typeof apps.$inferSelect;
+
+// =============================================================================
+// MCP Tables
+// =============================================================================
+
+/**
+ * MCP Server Configuration (for client mode - connecting to external servers)
+ */
+export const mcpServers = sqliteTable('mcp_servers', {
+  id: text('id').primaryKey().notNull(),
+  name: text('name').notNull(),
+  transport: text('transport').notNull(), // 'stdio' | 'http'
+  config: text('config').notNull().default('{}'), // JSON: command, args, env, url, headers
+  enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
+  autoConnect: integer('auto_connect', { mode: 'boolean' }).notNull().default(false),
+  timeout: integer('timeout').notNull().default(30000),
+  lastConnectedAt: integer('last_connected_at', { mode: 'timestamp' }),
+  createdAt: integer('created_at', { mode: 'timestamp' })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer('updated_at', { mode: 'timestamp' })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+export type MCPServer = typeof mcpServers.$inferSelect;
+export type MCPServerInsert = typeof mcpServers.$inferInsert;
+
+/**
+ * MCP Token table (for server mode - authenticating incoming clients)
+ */
+export const mcpTokens = sqliteTable('mcp_tokens', {
+  id: text('id').primaryKey().notNull(),
+  tokenHash: text('token_hash').notNull().unique(),
+  clientName: text('client_name').notNull(),
+  permissions: text('permissions').notNull().default('[]'), // JSON array of permissions
+  createdAt: integer('created_at', { mode: 'timestamp' })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),
+  lastUsedAt: integer('last_used_at', { mode: 'timestamp' }),
+  revokedAt: integer('revoked_at', { mode: 'timestamp' }),
+});
+
+export type MCPToken = typeof mcpTokens.$inferSelect;
+export type MCPTokenInsert = typeof mcpTokens.$inferInsert;
+
+/**
+ * MCP Tool Invocations (for auditing)
+ */
+export const mcpToolInvocations = sqliteTable('mcp_tool_invocations', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  sessionId: text('session_id'), // Srcbook session if applicable
+  serverId: text('server_id'),   // null for Srcbook's own tools
+  clientId: text('client_id'),   // For server mode: which client invoked
+  toolName: text('tool_name').notNull(),
+  input: text('input').notNull().default('{}'), // JSON
+  output: text('output'), // JSON
+  error: text('error'),
+  durationMs: integer('duration_ms'),
+  createdAt: integer('created_at', { mode: 'timestamp' })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+export type MCPToolInvocation = typeof mcpToolInvocations.$inferSelect;
+export type MCPToolInvocationInsert = typeof mcpToolInvocations.$inferInsert;
+
+/**
+ * MCP Resource Subscriptions
+ */
+export const mcpResourceSubscriptions = sqliteTable('mcp_resource_subscriptions', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  subscriptionId: text('subscription_id').notNull().unique(),
+  sessionId: text('session_id').notNull(),
+  serverId: text('server_id').notNull(),
+  resourceUri: text('resource_uri').notNull(),
+  active: integer('active', { mode: 'boolean' }).notNull().default(true),
+  createdAt: integer('created_at', { mode: 'timestamp' })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+export type MCPResourceSubscription = typeof mcpResourceSubscriptions.$inferSelect;
+export type MCPResourceSubscriptionInsert = typeof mcpResourceSubscriptions.$inferInsert;

@@ -76,7 +76,7 @@ export function spawnCall(options: SpawnCallRequestType) {
  *
  */
 export function node(options: NodeRequestType) {
-  const { cwd, env, entry, stdout, stderr, onExit } = options;
+  const { cwd, env, entry, stdout, stderr, onExit, onError } = options;
 
   return spawnCall({
     command: 'node',
@@ -85,6 +85,7 @@ export function node(options: NodeRequestType) {
     stdout,
     stderr,
     onExit,
+    onError,
     env: { ...process.env, ...env },
   });
 }
@@ -105,7 +106,7 @@ export function node(options: NodeRequestType) {
  *
  */
 export function tsx(options: NodeRequestType) {
-  const { cwd, env, entry, stdout, stderr, onExit } = options;
+  const { cwd, env, entry, stdout, stderr, onExit, onError } = options;
 
   // We are making an assumption about `tsx` being the tool of choice
   // for running TypeScript, as well as where it's located on the file system.
@@ -116,6 +117,7 @@ export function tsx(options: NodeRequestType) {
     stdout,
     stderr,
     onExit,
+    onError,
     env: { ...process.env, ...env },
   });
 }
@@ -168,5 +170,155 @@ export function vite(options: NpxRequestType) {
     ...options,
     command: Path.join(options.cwd, 'node_modules', '.bin', 'vite'),
     env: process.env,
+  });
+}
+
+// =============================================================================
+// Buffered Execution for MCP
+// =============================================================================
+
+export interface ExecuteAndCaptureOptions {
+  cwd: string;
+  entry: string;
+  language: 'javascript' | 'typescript';
+  env?: NodeJS.ProcessEnv;
+  timeoutMs?: number; // default 30s
+  maxOutputBytes?: number; // default 1MB
+}
+
+export interface ExecutionResult {
+  success: boolean;
+  stdout: string;
+  stderr: string;
+  exitCode: number | null;
+  executionTime: number;
+  timedOut: boolean;
+  truncated: boolean;
+}
+
+const DEFAULT_TIMEOUT_MS = 30_000;
+const DEFAULT_MAX_OUTPUT_BYTES = 1_048_576; // 1MB
+
+/**
+ * Execute a JavaScript or TypeScript file and capture all output.
+ *
+ * Unlike the streaming `node()` and `tsx()` functions, this buffers all output
+ * and returns a structured result. Designed for MCP cell_execute.
+ *
+ * Features:
+ * - Timeout support (default 30s)
+ * - Output truncation (default 1MB)
+ * - Tracks execution time
+ * - Non-streaming: waits for completion
+ *
+ * Example:
+ *
+ *     const result = await executeAndCapture({
+ *       cwd: '/Users/ben/.srcbook/foo',
+ *       entry: '/Users/ben/.srcbook/foo/src/index.ts',
+ *       language: 'typescript',
+ *       timeoutMs: 5000,
+ *     });
+ *
+ *     console.log(result.stdout); // "Hello World\n"
+ *     console.log(result.exitCode); // 0
+ *
+ */
+export function executeAndCapture(options: ExecuteAndCaptureOptions): Promise<ExecutionResult> {
+  const {
+    cwd,
+    entry,
+    language,
+    env = {},
+    timeoutMs = DEFAULT_TIMEOUT_MS,
+    maxOutputBytes = DEFAULT_MAX_OUTPUT_BYTES,
+  } = options;
+
+  return new Promise((resolve) => {
+    const startTime = Date.now();
+    let stdoutBuffer = '';
+    let stderrBuffer = '';
+    let stdoutTruncated = false;
+    let stderrTruncated = false;
+    let timedOut = false;
+    let resolved = false;
+
+    const appendStdout = (data: Buffer) => {
+      if (stdoutTruncated) return;
+      const chunk = data.toString('utf8');
+      if (stdoutBuffer.length + chunk.length > maxOutputBytes) {
+        stdoutBuffer += chunk.slice(0, maxOutputBytes - stdoutBuffer.length);
+        stdoutTruncated = true;
+      } else {
+        stdoutBuffer += chunk;
+      }
+    };
+
+    const appendStderr = (data: Buffer) => {
+      if (stderrTruncated) return;
+      const chunk = data.toString('utf8');
+      if (stderrBuffer.length + chunk.length > maxOutputBytes) {
+        stderrBuffer += chunk.slice(0, maxOutputBytes - stderrBuffer.length);
+        stderrTruncated = true;
+      } else {
+        stderrBuffer += chunk;
+      }
+    };
+
+    const finalize = (exitCode: number | null, signal: NodeJS.Signals | null) => {
+      if (resolved) return;
+      resolved = true;
+
+      const executionTime = Date.now() - startTime;
+
+      // If killed by signal (e.g., SIGTERM from timeout), treat as failure
+      const effectiveExitCode = signal ? 137 : exitCode;
+
+      resolve({
+        success: effectiveExitCode === 0,
+        stdout: stdoutBuffer,
+        stderr: stderrBuffer,
+        exitCode: effectiveExitCode,
+        executionTime,
+        timedOut,
+        truncated: stdoutTruncated || stderrTruncated,
+      });
+    };
+
+    const executeOptions = {
+      cwd,
+      env,
+      entry,
+      stdout: appendStdout,
+      stderr: appendStderr,
+      onExit: finalize,
+      onError: (err: NodeError) => {
+        if (resolved) return;
+        appendStderr(Buffer.from(err.message || 'Unknown error'));
+        finalize(1, null);
+      },
+    };
+
+    // Choose executor based on language
+    const child = language === 'typescript' ? tsx(executeOptions) : node(executeOptions);
+
+    // Set up timeout
+    const timeoutId = setTimeout(() => {
+      if (resolved) return;
+      timedOut = true;
+      child.kill('SIGTERM');
+
+      // Give process a chance to clean up, then force kill
+      setTimeout(() => {
+        if (!resolved) {
+          child.kill('SIGKILL');
+        }
+      }, 1000);
+    }, timeoutMs);
+
+    // Clean up timeout when process exits
+    child.on('exit', () => {
+      clearTimeout(timeoutId);
+    });
   });
 }
