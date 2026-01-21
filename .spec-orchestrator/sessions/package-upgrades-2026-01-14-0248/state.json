@@ -1,0 +1,111 @@
+{
+  "session_id": "package-upgrades-2026-01-14",
+  "started_at": "2026-01-14T00:00:00Z",
+  "target_folder": ".specs/",
+  "validation_report": ".spec-validator/validation-report.md",
+  "phase": 4,
+  "budget_total": 100,
+  "budget_remaining": 85,
+  "commitment_level": 0,
+  "queue": [
+    {
+      "id": "SPEC-002",
+      "name": "ESLint Flat Config Migration",
+      "spec_file": "SPEC-002-eslint-flat-config-migration.md",
+      "type": "BUILD_TOOLING",
+      "priority": "P1",
+      "status": "READY",
+      "dependencies": ["SPEC-001"],
+      "budget_allocated": 15,
+      "budget_spent": 0,
+      "complexity": "medium",
+      "requirements_count": 5,
+      "iterations": 0,
+      "max_iterations": 3,
+      "estimated_hours": "2-4"
+    },
+    {
+      "id": "SPEC-003",
+      "name": "Core Dependencies Upgrade",
+      "spec_file": "SPEC-003-core-dependencies-upgrade.md",
+      "type": "DEPENDENCIES",
+      "priority": "P1",
+      "status": "READY",
+      "dependencies": ["SPEC-001"],
+      "budget_allocated": 20,
+      "budget_spent": 0,
+      "complexity": "medium",
+      "requirements_count": 7,
+      "iterations": 0,
+      "max_iterations": 3,
+      "estimated_hours": "3-5",
+      "notes": "CRITICAL: Zod 4 upgrade will fix 121 MCP TypeScript errors"
+    },
+    {
+      "id": "SPEC-004",
+      "name": "AI SDK Migration",
+      "spec_file": "SPEC-004-ai-sdk-migration.md",
+      "type": "CORE_FUNCTIONALITY",
+      "priority": "P0",
+      "status": "READY",
+      "dependencies": ["SPEC-001"],
+      "budget_allocated": 25,
+      "budget_spent": 0,
+      "complexity": "high",
+      "requirements_count": 7,
+      "iterations": 0,
+      "max_iterations": 3,
+      "estimated_hours": "8-16"
+    },
+    {
+      "id": "SPEC-005",
+      "name": "Frontend Stack Upgrade",
+      "spec_file": "SPEC-005-frontend-stack-upgrade.md",
+      "type": "FRONTEND",
+      "priority": "P2",
+      "status": "BLOCKED",
+      "dependencies": ["SPEC-003", "SPEC-004"],
+      "budget_allocated": 25,
+      "budget_spent": 0,
+      "complexity": "high",
+      "requirements_count": 9,
+      "iterations": 0,
+      "max_iterations": 3,
+      "estimated_hours": "8-12"
+    }
+  ],
+  "completed": [
+    {
+      "id": "SPEC-001",
+      "name": "Foundation & Build System",
+      "spec_file": "SPEC-001-foundation-build-system.md",
+      "type": "CRITICAL_PATH",
+      "priority": "P0",
+      "status": "COMPLETED",
+      "dependencies": [],
+      "budget_allocated": 15,
+      "budget_spent": 15,
+      "complexity": "medium",
+      "requirements_count": 6,
+      "iterations": 1,
+      "max_iterations": 3,
+      "estimated_hours": "2-4",
+      "completed_at": "2026-01-14T03:25:00Z",
+      "notes": "TypeScript 5.9.3, Turbo 2.7.4, Vite 7.3.1, Vitest 4.x. MCP errors remain but are blocked by Zod v3 (SPEC-003 will fix)."
+    }
+  ],
+  "current": null,
+  "signals": {
+    "files_modified_history": [
+      ["package.json", "packages/web/package.json", "packages/api/package.json", "packages/api/vitest.config.mts"]
+    ],
+    "checklist_progress_history": [1.0],
+    "time_spent_history": []
+  },
+  "spiral_detection": {
+    "oscillation_count": 0,
+    "scope_creep_count": 0,
+    "diminishing_returns_count": 0
+  },
+  "recommendations_applied": []
+}

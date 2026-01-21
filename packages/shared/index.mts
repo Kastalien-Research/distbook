@@ -9,5 +9,7 @@ export * from './src/types/history.mjs';
 export * from './src/types/websockets.mjs';
 export * from './src/types/secrets.mjs';
 export * from './src/types/feedback.mjs';
+export * from './src/types/mcp.mjs';
+export * from './src/schemas/mcp-websockets.mjs';
 export * from './src/utils.mjs';
 export * from './src/ai.mjs';

@@ -128,7 +128,7 @@ export class Channel {
       conn: ConnectionContextType,
     ) => void,
   ) {
-    this.events[event] = { schema, handler };
+    this.events[event] = { schema, handler: handler as HandlerType };
     return this;
   }
 
@@ -247,7 +247,7 @@ export default class WebSocketServer {
       return;
     }
 
-    handler(result.data, { topic: match.topic, event: event, params: match.params }, conn);
+    handler(result.data as Record<string, any>, { topic: match.topic, event: event, params: match.params }, conn);
   }
 
   private findChannelMatch(topic: string): { channel: Channel; match: TopicMatch } | null {

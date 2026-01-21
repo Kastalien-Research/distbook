@@ -64,6 +64,7 @@ import { AppGenerationFeedbackType } from '@srcbook/shared';
 import { createZipFromApp } from '../apps/disk.mjs';
 import { checkoutCommit, commitAllFiles, getCurrentCommitSha } from '../apps/git.mjs';
 import { streamJsonResponse } from './utils.mjs';
+import mcpRoutes from './routes/mcp.mjs';
 
 const app: Application = express();
 
@@ -433,7 +434,7 @@ router.post('/apps', cors(), async (req, res) => {
   const result = CreateAppSchema.safeParse(req.body);
 
   if (result.success === false) {
-    const errors = result.error.errors.map((error) => error.message);
+    const errors = result.error.issues.map((error) => error.message);
     return res.status(400).json({ errors });
   }
 
@@ -783,6 +784,7 @@ router.post('/apps/:id/export', cors(), async (req, res) => {
 });
 
 app.use('/api', router);
+app.use('/api', mcpRoutes);
 
 export default app;
 
