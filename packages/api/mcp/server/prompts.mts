@@ -11,6 +11,7 @@
 
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { logger } from '../utilities/index.mjs';
 
 // =============================================================================
 // Prompt Argument Schemas
@@ -38,16 +39,15 @@ export const OptimizeNotebookArgsSchema = z.object({
  * Register all notebook prompts with the MCP server
  */
 export function registerNotebookPrompts(server: McpServer): void {
-  // =========================================================================
-  // create_analysis_notebook
-  // =========================================================================
-
-  server.prompt(
+  server.registerPrompt(
     'create_analysis_notebook',
-    'Create a data analysis notebook with standard structure',
-    CreateAnalysisNotebookArgsSchema.shape,
+    {
+      title: 'Create Analysis Notebook',
+      description: 'Create a data analysis notebook with standard structure',
+      argsSchema: CreateAnalysisNotebookArgsSchema.shape,
+    },
     async (args) => {
-      console.log('[MCP Prompt] create_analysis_notebook:', args);
+      logger.info({ prompt: 'create_analysis_notebook', args });
 
       const datasetDescription = args.dataset_description || 'your dataset';
       const analysisGoals = args.analysis_goals || 'insights and patterns';
@@ -113,12 +113,15 @@ Make sure each cell has clear comments explaining what it does.`,
   // debug_code_cell
   // =========================================================================
 
-  server.prompt(
+  server.registerPrompt(
     'debug_code_cell',
-    'Debug a failing code cell',
-    DebugCodeCellArgsSchema.shape,
+    {
+      title: 'Debug Code Cell',
+      description: 'Debug a failing code cell',
+      argsSchema: DebugCodeCellArgsSchema.shape,
+    },
     async (args) => {
-      console.log('[MCP Prompt] debug_code_cell:', args);
+      logger.info({ prompt: 'debug_code_cell', args });
 
       const cellContent = args.cell_content || '// No code provided';
       const errorMessage = args.error_message || 'Unknown error';
@@ -165,17 +168,17 @@ Provide the fixed code in a format I can directly use in Srcbook.`,
   // optimize_notebook
   // =========================================================================
 
-  server.prompt(
+  server.registerPrompt(
     'optimize_notebook',
-    'Suggest optimizations for notebook performance and structure',
-    OptimizeNotebookArgsSchema.shape,
+    {
+      title: 'Optimize Notebook',
+      description: 'Suggest optimizations for notebook performance and structure',
+      argsSchema: OptimizeNotebookArgsSchema.shape,
+    },
     async (args) => {
-      console.log('[MCP Prompt] optimize_notebook:', args);
+      logger.info({ prompt: 'optimize_notebook', args });
 
       const sessionId = args.session_id || 'unknown';
-
-      // TODO: In a full implementation, we would fetch the notebook content
-      // and include it in the prompt for analysis
 
       return {
         messages: [
@@ -183,7 +186,7 @@ Provide the fixed code in a format I can directly use in Srcbook.`,
             role: 'user' as const,
             content: {
               type: 'text' as const,
-              text: `Please analyze my Srcbook notebook (session: ${sessionId}) and suggest optimizations.
+              text: `Please analyze my Srcbook notebook (session: ${sessionId}, resource: srcbook://session/${sessionId}) and suggest optimizations.
 
 Evaluate the notebook on these dimensions:
 
@@ -229,5 +232,8 @@ Please provide:
     },
   );
 
-  console.log('[MCP Server] Registered 3 notebook prompts');
+  logger.info({ message: 'Registered 3 notebook prompts with schemas and multimodal support' });
+  if (typeof server.sendPromptListChanged === 'function') {
+    server.sendPromptListChanged();
+  }
 }

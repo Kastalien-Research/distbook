@@ -79,6 +79,7 @@ export class MockMCPServer {
       transport: 'stdio',
       enabled: true,
       autoConnect: false,
+      timeout: 30000,
     };
   }
 
@@ -155,7 +156,12 @@ export function createMockClient(
       tools: tools.map((t) => ({
         name: t.name,
         description: `Mock tool: ${t.name}`,
-        inputSchema: t.inputSchema || { type: 'object', properties: {} },
+        serverId: 'mock-server',
+        serverName: 'Mock Server',
+        inputSchema: (t.inputSchema as MCPRegisteredTool['inputSchema']) || {
+          type: 'object' as const,
+          properties: {},
+        },
       })),
     }),
     listResources: async () => ({
@@ -194,7 +200,7 @@ export async function createTestSession(options?: {
  * Add a code cell to a test session
  */
 export async function addCodeCell(
-  sessionId: string,
+  _sessionId: string,
   content: string,
 ): Promise<TestCell> {
   cellCounter++;
@@ -209,7 +215,7 @@ export async function addCodeCell(
  * Add a markdown cell to a test session
  */
 export async function addMarkdownCell(
-  sessionId: string,
+  _sessionId: string,
   content: string,
 ): Promise<TestCell> {
   cellCounter++;
@@ -263,13 +269,13 @@ let mockSessionCounter = 0;
 let mockCellCounter = 0;
 
 export async function createMCPClient(
-  server: TestSrcbookInstance,
+  _server: TestSrcbookInstance,
 ): Promise<TestMCPClient> {
   // TODO: Implement actual MCP client creation
   // For now, return a mock client that returns realistic responses
 
   return {
-    callTool: async <T = unknown>(name: string, args: Record<string, unknown>): Promise<T> => {
+    callTool: async <T = unknown,>(name: string, args: Record<string, unknown>): Promise<T> => {
       console.log(`[TestMCPClient] callTool: ${name}`, args);
 
       // Return realistic mock responses based on tool name
@@ -297,11 +303,11 @@ export async function createMCPClient(
           return { success: true } as T;
       }
     },
-    readResource: async <T = unknown>(uri: string): Promise<T> => {
+    readResource: async <T = unknown,>(uri: string): Promise<T> => {
       console.log(`[TestMCPClient] readResource: ${uri}`);
       return {} as T;
     },
-    subscribeResource: async (uri: string, callback: (update: unknown) => void) => {
+    subscribeResource: async (uri: string, _callback: (update: unknown) => void) => {
       console.log(`[TestMCPClient] subscribeResource: ${uri}`);
       return async () => {
         console.log(`[TestMCPClient] unsubscribe: ${uri}`);
@@ -337,8 +343,6 @@ let agentSessionCounter = 0;
 let agentCellCounter = 0;
 
 export class TestAgent {
-  private client: TestMCPClient | null = null;
-
   async discoverTools(
     mcpEndpoint: string,
   ): Promise<Array<{ name: string; description: string }>> {
@@ -396,7 +400,7 @@ export function percentile(values: number[], p: number): number {
   if (values.length === 0) return 0;
   const sorted = [...values].sort((a, b) => a - b);
   const index = Math.ceil((p / 100) * sorted.length) - 1;
-  return sorted[Math.max(0, index)];
+  return sorted[Math.max(0, index)]!;
 }
 
 /**

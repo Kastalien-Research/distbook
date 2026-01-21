@@ -10,9 +10,43 @@
 import express, { type Router, type Response } from 'express';
 import cors from 'cors';
 import { z } from 'zod';
+import { randomUUID } from 'node:crypto';
 import { MCPTransportSchema } from '@srcbook/shared';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
+import { registerNotebookTools } from '../../mcp/server/tools.mjs';
+import { registerNotebookResources } from '../../mcp/server/resources.mjs';
+import { registerNotebookPrompts } from '../../mcp/server/prompts.mjs';
+import { MCP_SERVER_NAME, MCP_SERVER_VERSION } from '../../mcp/server/index.mjs';
 
 const router: Router = express.Router();
+
+// =============================================================================
+// MCP Session Management
+// =============================================================================
+
+/**
+ * Store active MCP transports by session ID
+ * Each session gets its own transport and server instance
+ */
+const transports: Record<string, StreamableHTTPServerTransport> = {};
+
+/**
+ * Create a new MCP server instance with all capabilities registered
+ */
+function createMCPServer(): McpServer {
+  const server = new McpServer({
+    name: MCP_SERVER_NAME,
+    version: MCP_SERVER_VERSION,
+  });
+
+  registerNotebookTools(server);
+  registerNotebookResources(server);
+  registerNotebookPrompts(server);
+
+  return server;
+}
 
 // =============================================================================
 // Validation Schemas
@@ -66,51 +100,83 @@ function error404(res: Response, message: string = 'Not found') {
  */
 router.options('/mcp', cors());
 router.post('/mcp', cors(), async (req, res) => {
-  // TODO: Implement MCP server protocol handler
-  // 1. Validate Authorization header (bearer token)
-  // 2. Parse JSON-RPC request
-  // 3. Route to appropriate handler (tools/list, tools/call, etc.)
-  // 4. Return JSON-RPC response
+  const sessionId = req.headers['mcp-session-id'] as string | undefined;
+  let transport: StreamableHTTPServerTransport;
 
-  console.log('[MCP] Protocol endpoint called');
+  if (sessionId && transports[sessionId]) {
+    // Reuse existing session
+    transport = transports[sessionId];
+  } else if (!sessionId && isInitializeRequest(req.body)) {
+    // New session initialization
+    transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: () => randomUUID(),
+      onsessioninitialized: (id) => {
+        transports[id] = transport;
+        console.log('[MCP] Session initialized:', id);
+      },
+      onsessionclosed: (id) => {
+        delete transports[id];
+        console.log('[MCP] Session closed:', id);
+      },
+    });
 
-  return res.status(501).json({
-    jsonrpc: '2.0',
-    error: {
-      code: -32601,
-      message: 'MCP server not yet implemented',
-    },
-    id: req.body?.id || null,
-  });
+    transport.onclose = () => {
+      if (transport.sessionId) {
+        delete transports[transport.sessionId];
+      }
+    };
+
+    // Create server with all capabilities and connect to transport
+    const server = createMCPServer();
+    await server.connect(transport);
+  } else {
+    // Invalid request: no session ID and not an initialize request
+    res.status(400).json({
+      jsonrpc: '2.0',
+      error: { code: -32000, message: 'Invalid session' },
+      id: req.body?.id || null,
+    });
+    return;
+  }
+
+  await transport.handleRequest(req, res, req.body);
 });
 
 /**
- * Server-Sent Events endpoint for server-to-client notifications
+ * SSE endpoint for server-to-client notifications (Streamable HTTP transport)
  */
-router.options('/mcp/sse', cors());
-router.get('/mcp/sse', cors(), async (req, res) => {
-  // TODO: Implement SSE for MCP notifications
-  // 1. Validate Authorization header
-  // 2. Set up SSE stream
-  // 3. Register for capability change notifications
+router.options('/mcp', cors());
+router.get('/mcp', cors(), async (req, res) => {
+  const sessionId = req.headers['mcp-session-id'] as string;
+  const transport = transports[sessionId];
 
-  console.log('[MCP] SSE endpoint called');
+  if (transport) {
+    await transport.handleRequest(req, res);
+  } else {
+    res.status(400).json({
+      jsonrpc: '2.0',
+      error: { code: -32000, message: 'Invalid session' },
+      id: null,
+    });
+  }
+});
 
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
+/**
+ * Session close endpoint for MCP transport
+ */
+router.delete('/mcp', cors(), async (req, res) => {
+  const sessionId = req.headers['mcp-session-id'] as string;
+  const transport = transports[sessionId];
 
-  res.write('event: connected\n');
-  res.write('data: {"status": "connected", "message": "MCP SSE not yet implemented"}\n\n');
-
-  // Keep connection alive
-  const keepAlive = setInterval(() => {
-    res.write(':keepalive\n\n');
-  }, 30000);
-
-  req.on('close', () => {
-    clearInterval(keepAlive);
-  });
+  if (transport) {
+    await transport.handleRequest(req, res);
+  } else {
+    res.status(400).json({
+      jsonrpc: '2.0',
+      error: { code: -32000, message: 'Invalid session' },
+      id: null,
+    });
+  }
 });
 
 // =============================================================================

@@ -10,8 +10,6 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import {
   startSrcbookWithMCP,
   createMCPClient,
-  waitFor,
-  waitForLength,
   type TestSrcbookInstance,
   type TestMCPClient,
 } from '../utils.mjs';

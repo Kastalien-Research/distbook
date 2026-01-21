@@ -6,12 +6,11 @@
  * @see 04-mcp-testing.md section 3.1 for requirements
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   createTestSession,
   addCodeCell,
   addMarkdownCell,
-  uniqueTestId,
 } from '../utils.mjs';
 
 // =============================================================================
@@ -131,7 +130,8 @@ describe('cell_create tool', () => {
 describe('cell_execute tool', () => {
   it('returns stdout from successful execution', async () => {
     const session = await createTestSession({ title: 'Exec Test' });
-    const cell = await addCodeCell(session.id, 'console.log("hello")');
+    // Create cell for context (would be executed in actual implementation)
+    await addCodeCell(session.id, 'console.log("hello")');
 
     // TODO: Implement actual execution
     const mockResult = {
@@ -146,7 +146,8 @@ describe('cell_execute tool', () => {
 
   it('returns stderr from failed execution', async () => {
     const session = await createTestSession({ title: 'Error Test' });
-    const cell = await addCodeCell(session.id, 'throw new Error("test")');
+    // Create cell for context (would be executed in actual implementation)
+    await addCodeCell(session.id, 'throw new Error("test")');
 
     // TODO: Implement actual execution
     const mockResult = {
@@ -169,7 +170,8 @@ describe('cell_execute tool', () => {
   });
 
   it('rejects invalid cell ID', async () => {
-    const session = await createTestSession({ title: 'Invalid Cell' });
+    // Create session for context (session ID would be used in actual implementation)
+    await createTestSession({ title: 'Invalid Cell' });
 
     // TODO: Connect to actual tool
     const invalidExecution = async () => {
@@ -224,7 +226,8 @@ describe('cell_delete tool', () => {
   });
 
   it('fails for non-existent cell', async () => {
-    const session = await createTestSession({ title: 'No Cell' });
+    // Create session for context (session ID would be used in actual implementation)
+    await createTestSession({ title: 'No Cell' });
 
     const deleteNonExistent = async () => {
       throw new Error('Cell not found');
@@ -296,7 +299,8 @@ describe('notebook_delete tool', () => {
 
 describe('deps_install tool', () => {
   it('installs valid npm package', async () => {
-    const session = await createTestSession({ title: 'Deps Test' });
+    // Create session for context (session ID would be used in actual implementation)
+    await createTestSession({ title: 'Deps Test' });
 
     // TODO: Implement actual package installation
     const mockInstallResult = {
@@ -310,7 +314,8 @@ describe('deps_install tool', () => {
   });
 
   it('handles installation failure', async () => {
-    const session = await createTestSession({ title: 'Bad Deps' });
+    // Create session for context (session ID would be used in actual implementation)
+    await createTestSession({ title: 'Bad Deps' });
 
     const installBadPackage = async () => {
       throw new Error('Package not found: nonexistent-package-xyz-123');
@@ -320,7 +325,8 @@ describe('deps_install tool', () => {
   });
 
   it('rejects dangerous package names', async () => {
-    const session = await createTestSession({ title: 'Danger Test' });
+    // Create session for context (session ID would be used in actual implementation)
+    await createTestSession({ title: 'Danger Test' });
 
     // Test for command injection attempts
     const dangerousName = 'lodash; rm -rf /';

@@ -293,7 +293,10 @@ export const MCPSamplingRequestSchema = z.object({
     costPriority: z.number().min(0).max(1).optional(),
   }).optional(),
   systemPrompt: z.string().optional(),
-  maxTokens: z.number().positive(),
+  maxTokens: z.number().positive().optional(),
+  temperature: z.number().min(0).max(2).optional(),
+  stopSequences: z.array(z.string()).optional(),
+  includeContext: z.enum(['none', 'thisServer', 'allServers']).optional(),
 });
 
 export type MCPSamplingRequest = z.infer<typeof MCPSamplingRequestSchema>;

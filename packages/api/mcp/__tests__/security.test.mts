@@ -6,7 +6,7 @@
  * @see 04-mcp-testing.md section 3.3 and 7 for requirements
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { sleep } from './utils.mjs';
 
 // =============================================================================
@@ -340,13 +340,14 @@ describe('Session Management', () => {
 // =============================================================================
 
 describe('Audit Logging', () => {
-  interface AuditEvent {
-    timestamp: Date;
-    type: string;
-    clientId: string;
-    action: string;
-    details: Record<string, unknown>;
-  }
+  // AuditEvent interface for future audit logging implementation
+  // interface AuditEvent {
+  //   timestamp: Date;
+  //   type: string;
+  //   clientId: string;
+  //   action: string;
+  //   details: Record<string, unknown>;
+  // }
 
   function redactSensitive(obj: Record<string, unknown>): Record<string, unknown> {
     const sensitiveKeys = ['password', 'token', 'secret', 'key', 'authorization'];

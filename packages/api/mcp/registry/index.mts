@@ -185,7 +185,7 @@ export function findTool(name: string): MCPRegisteredTool | undefined {
 export function findResource(uri: string): MCPRegisteredResource | undefined {
   for (const resources of registry.resources.values()) {
     // Simple prefix matching - could be enhanced for templates
-    const resource = resources.find((r) => uri.startsWith(r.uri.split('{')[0]));
+    const resource = resources.find((r) => uri.startsWith(r.uri.split('{')[0] ?? ''));
     if (resource) return resource;
   }
   return undefined;

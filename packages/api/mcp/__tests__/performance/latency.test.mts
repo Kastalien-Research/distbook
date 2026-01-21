@@ -12,7 +12,6 @@ import {
   createMCPClient,
   percentile,
   benchmark,
-  measureLatency,
   sleep,
   type TestSrcbookInstance,
   type TestMCPClient,

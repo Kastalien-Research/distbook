@@ -13,8 +13,11 @@
  * All session-specific resources support subscriptions for real-time updates.
  */
 
+import { randomUUID } from 'node:crypto';
+import { Buffer } from 'node:buffer';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { paginator, logger } from '../utilities/index.mjs';
 
 // =============================================================================
 // Resource Content Types (from spec section 6.4)
@@ -75,32 +78,37 @@ export interface PackageJsonContent {
  * Register all notebook resources with the MCP server
  */
 export function registerNotebookResources(server: McpServer): void {
+  const annotations = { audience: ['assistant', 'user'] as ('user' | 'assistant')[], priority: 0.6 };
+
   // =========================================================================
   // Static Resource: List all notebooks
   // =========================================================================
 
-  server.resource(
+  server.registerResource(
+    'notebooks',
     'srcbook://notebooks',
-    'srcbook://notebooks',
+    {
+      description: 'List of all notebooks',
+      mimeType: 'application/json',
+      annotations,
+    },
     async () => {
-      // TODO: Implement notebook listing
-      // 1. List all sessions from memory
-      // 2. Parse srcbook directory for additional notebooks
-      // 3. Return list with metadata
-
-      console.log('[MCP Resource] Reading srcbook://notebooks');
-
+      logger.info({ message: 'Reading srcbook://notebooks' });
       const content: NotebookListContent = {
         notebooks: [],
         total: 0,
       };
+      const paged = paginator.paginate(content.notebooks);
 
       return {
         contents: [
           {
             uri: 'srcbook://notebooks',
             mimeType: 'application/json',
-            text: JSON.stringify(content),
+            text: JSON.stringify({
+              ...content,
+              nextCursor: paged.nextCursor,
+            }),
           },
         ],
       };
@@ -111,22 +119,25 @@ export function registerNotebookResources(server: McpServer): void {
   // Template Resource: Session state
   // =========================================================================
 
-  server.resource(
-    'srcbook://session/{sessionId}',
-    new ResourceTemplate('srcbook://session/{sessionId}', {
-      list: async () => {
-        // TODO: Return list of all active sessions
-        return { resources: [] };
-      },
-    }),
-    async (uri, params) => {
-      // TODO: Implement session state retrieval
-      // 1. Parse sessionId from params
-      // 2. Find session in memory
-      // 3. Return full state including cells
+  const sessionTemplate = new ResourceTemplate('srcbook://session/{sessionId}', {
+    list: async (extra) => {
+      const cursor = (extra as Record<string, unknown> | undefined)?.['cursor'] as string | undefined;
+      const paged = paginator.paginate<{ uri: string; name: string }>([], cursor);
+      return { resources: paged.items, nextCursor: paged.nextCursor };
+    },
+  });
 
-      const sessionId = params?.sessionId as string;
-      console.log('[MCP Resource] Reading session:', sessionId);
+  server.registerResource(
+    'session',
+    sessionTemplate,
+    {
+      description: 'Complete notebook state',
+      mimeType: 'application/json',
+      annotations: { audience: ['assistant'] as ('user' | 'assistant')[], priority: 0.7 },
+    },
+    async (uri, params) => {
+      const sessionId = params.sessionId as string;
+      logger.debug({ message: 'Reading session', sessionId });
 
       const content: SessionStateContent = {
         sessionId,
@@ -154,23 +165,26 @@ export function registerNotebookResources(server: McpServer): void {
   // Template Resource: Individual cell
   // =========================================================================
 
-  server.resource(
-    'srcbook://session/{sessionId}/cell/{cellId}',
-    new ResourceTemplate('srcbook://session/{sessionId}/cell/{cellId}', {
-      list: async () => {
-        // TODO: Return list of all cells (would need session context)
-        return { resources: [] };
-      },
-    }),
-    async (uri, params) => {
-      // TODO: Implement cell retrieval
-      // 1. Parse sessionId and cellId from params
-      // 2. Find session and cell
-      // 3. Return cell content
+  const cellTemplate = new ResourceTemplate('srcbook://session/{sessionId}/cell/{cellId}', {
+    list: async (extra) => {
+      const cursor = (extra as Record<string, unknown> | undefined)?.['cursor'] as string | undefined;
+      const paged = paginator.paginate<{ uri: string; name: string }>([], cursor);
+      return { resources: paged.items, nextCursor: paged.nextCursor };
+    },
+  });
 
-      const sessionId = params?.sessionId as string;
-      const cellId = params?.cellId as string;
-      console.log('[MCP Resource] Reading cell:', cellId, 'in session:', sessionId);
+  server.registerResource(
+    'cell',
+    cellTemplate,
+    {
+      description: 'Individual cell content',
+      mimeType: 'application/json',
+      annotations: { audience: ['assistant'] as ('user' | 'assistant')[], priority: 0.6 },
+    },
+    async (uri, params) => {
+      const sessionId = params.sessionId as string;
+      const cellId = params.cellId as string;
+      logger.info({ message: '[MCP Resource] Reading cell', sessionId, cellId });
 
       const content: CellContent = {
         id: cellId,
@@ -194,22 +208,26 @@ export function registerNotebookResources(server: McpServer): void {
   // Template Resource: Cell output
   // =========================================================================
 
-  server.resource(
-    'srcbook://session/{sessionId}/cell/{cellId}/output',
-    new ResourceTemplate('srcbook://session/{sessionId}/cell/{cellId}/output', {
-      list: async () => {
-        return { resources: [] };
-      },
-    }),
-    async (uri, params) => {
-      // TODO: Implement cell output retrieval
-      // 1. Parse sessionId and cellId from params
-      // 2. Find session and cell
-      // 3. Return last execution output
+  const cellOutputTemplate = new ResourceTemplate('srcbook://session/{sessionId}/cell/{cellId}/output', {
+    list: async (extra) => {
+      const cursor = (extra as Record<string, unknown> | undefined)?.['cursor'] as string | undefined;
+      const paged = paginator.paginate<{ uri: string; name: string }>([], cursor);
+      return { resources: paged.items, nextCursor: paged.nextCursor };
+    },
+  });
 
-      const sessionId = params?.sessionId as string;
-      const cellId = params?.cellId as string;
-      console.log('[MCP Resource] Reading output for cell:', cellId, 'in session:', sessionId);
+  server.registerResource(
+    'cell_output',
+    cellOutputTemplate,
+    {
+      description: 'Cell execution output (supports binary payloads)',
+      mimeType: 'application/json',
+      annotations: { audience: ['assistant'] as ('user' | 'assistant')[], priority: 0.6 },
+    },
+    async (uri, params) => {
+      const sessionId = params.sessionId as string;
+      const cellId = params.cellId as string;
+      logger.info({ message: '[MCP Resource] Reading cell output', sessionId, cellId });
 
       const content: CellOutputContent = {
         stdout: '',
@@ -219,12 +237,16 @@ export function registerNotebookResources(server: McpServer): void {
         executedAt: new Date().toISOString(),
       };
 
+      const payload = JSON.stringify(content);
+
       return {
         contents: [
           {
             uri: uri.href,
-            mimeType: 'text/plain',
-            text: JSON.stringify(content),
+            mimeType: 'application/json',
+            text: payload,
+            base64: Buffer.from(payload).toString('base64'),
+            description: 'Execution result for the last run of this cell',
           },
         ],
       };
@@ -235,21 +257,25 @@ export function registerNotebookResources(server: McpServer): void {
   // Template Resource: Package.json
   // =========================================================================
 
-  server.resource(
-    'srcbook://session/{sessionId}/package.json',
-    new ResourceTemplate('srcbook://session/{sessionId}/package.json', {
-      list: async () => {
-        return { resources: [] };
-      },
-    }),
-    async (uri, params) => {
-      // TODO: Implement package.json retrieval
-      // 1. Parse sessionId from params
-      // 2. Find session directory
-      // 3. Read and return package.json contents
+  const packageTemplate = new ResourceTemplate('srcbook://session/{sessionId}/package.json', {
+    list: async (extra) => {
+      const cursor = (extra as Record<string, unknown> | undefined)?.['cursor'] as string | undefined;
+      const paged = paginator.paginate<{ uri: string; name: string }>([], cursor);
+      return { resources: paged.items, nextCursor: paged.nextCursor };
+    },
+  });
 
-      const sessionId = params?.sessionId as string;
-      console.log('[MCP Resource] Reading package.json for session:', sessionId);
+  server.registerResource(
+    'package_json',
+    packageTemplate,
+    {
+      description: 'npm dependencies for a notebook session',
+      mimeType: 'application/json',
+      annotations,
+    },
+    async (uri, params) => {
+      const sessionId = params.sessionId as string;
+      logger.info({ message: '[MCP Resource] Reading package.json', sessionId });
 
       const content: PackageJsonContent = {
         dependencies: {},
@@ -268,7 +294,10 @@ export function registerNotebookResources(server: McpServer): void {
     },
   );
 
-  console.log('[MCP Server] Registered 5 notebook resource templates');
+  logger.info({ message: 'Registered 5 notebook resource templates with annotations' });
+  if (typeof server.sendResourceListChanged === 'function') {
+    server.sendResourceListChanged();
+  }
 }
 
 // =============================================================================
@@ -284,6 +313,7 @@ interface ResourceSubscription {
 }
 
 const subscriptions = new Map<string, ResourceSubscription>();
+const MIN_NOTIFY_INTERVAL_MS = 100;
 
 /**
  * Subscribe to resource updates
@@ -293,7 +323,7 @@ export function subscribeToResource(
   uri: string,
 ): ResourceSubscription {
   const subscription: ResourceSubscription = {
-    id: crypto.randomUUID(),
+    id: randomUUID(),
     clientId,
     uri,
     active: true,
@@ -301,7 +331,7 @@ export function subscribeToResource(
   };
 
   subscriptions.set(subscription.id, subscription);
-  console.log('[MCP Resource] Client', clientId, 'subscribed to', uri);
+  logger.info({ message: '[MCP Resource] Client subscribed', clientId, uri });
 
   return subscription;
 }
@@ -317,7 +347,7 @@ export function unsubscribeFromResource(subscriptionId: string): boolean {
 
   subscription.active = false;
   subscriptions.delete(subscriptionId);
-  console.log('[MCP Resource] Unsubscribed:', subscriptionId);
+  logger.info({ message: '[MCP Resource] Unsubscribed', subscriptionId });
 
   return true;
 }
@@ -338,8 +368,12 @@ export function notifySubscribers(uri: string, _content: unknown): void {
   const matchingSubscriptions = getSubscriptionsForUri(uri);
 
   for (const sub of matchingSubscriptions) {
+    const now = Date.now();
+    if (now - sub.lastNotified.getTime() < MIN_NOTIFY_INTERVAL_MS) {
+      continue;
+    }
     sub.lastNotified = new Date();
     // TODO: Send notification via WebSocket
-    console.log('[MCP Resource] Notifying', sub.clientId, 'of change to', uri);
+    logger.debug({ message: 'Notifying subscriber', clientId: sub.clientId, uri });
   }
 }

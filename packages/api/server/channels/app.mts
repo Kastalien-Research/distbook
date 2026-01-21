@@ -11,6 +11,7 @@ import {
   DepsInstallPayloadType,
   DepsInstallPayloadSchema,
   DepsClearPayloadType,
+  DepsClearPayloadSchema,
   DepsStatusPayloadSchema,
 } from '@srcbook/shared';
 
@@ -232,7 +233,7 @@ export function register(wss: WebSocketServer) {
     )
     .on('preview:stop', PreviewStopPayloadSchema, previewStop)
     .on('deps:install', DepsInstallPayloadSchema, dependenciesInstall)
-    .on('deps:clear', DepsInstallPayloadSchema, async (payload, context, _conn) => {
+    .on('deps:clear', DepsClearPayloadSchema, async (payload, context, _conn) => {
       await clearNodeModules(payload, context, _conn);
     })
     .on('deps:status', DepsStatusPayloadSchema, dependenciesStatus)

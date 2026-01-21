@@ -6,7 +6,7 @@
  * @see 04-mcp-testing.md section 3.1 for requirements
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   createTestSession,
   addCodeCell,
@@ -65,8 +65,8 @@ describe('session resource provider', () => {
       ],
     };
 
-    expect(mockResource.cells[0].outputs).toBeDefined();
-    expect(mockResource.cells[0].outputs[0].content).toBe('test\n');
+    expect(mockResource.cells[0]!.outputs).toBeDefined();
+    expect(mockResource.cells[0]!.outputs[0]!.content).toBe('test\n');
   });
 });
 
@@ -92,7 +92,8 @@ describe('cell resource provider', () => {
   });
 
   it('returns 404 for invalid cell', async () => {
-    const session = await createTestSession({ title: 'Invalid Cell' });
+    // Create session for context (session ID would be used in actual implementation)
+    await createTestSession({ title: 'Invalid Cell' });
 
     const readInvalidCell = async () => {
       throw new Error('Cell not found');
@@ -232,7 +233,8 @@ describe('resource URI validation', () => {
 
 describe('resource subscriptions', () => {
   it('notifies on cell creation', async () => {
-    const session = await createTestSession({ title: 'Sub Test' });
+    // Create session for context (would be used in actual subscription)
+    await createTestSession({ title: 'Sub Test' });
     const updates: unknown[] = [];
 
     // TODO: Implement actual subscription
@@ -270,8 +272,9 @@ describe('resource subscriptions', () => {
   });
 
   it('stops receiving updates after unsubscribe', async () => {
-    const session = await createTestSession({ title: 'Unsub Test' });
-    const updates: unknown[] = [];
+    // Create session for context (would be used in actual subscription)
+    await createTestSession({ title: 'Unsub Test' });
+    // updates array would be used in actual implementation
     let isSubscribed = true;
 
     const mockSubscribe = () => {
