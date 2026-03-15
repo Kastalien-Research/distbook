@@ -18,7 +18,7 @@ import {
   findCell,
   removeCell,
 } from '../session.mjs';
-import { generateCells, generateSrcbook, healthcheck, streamEditApp } from '../ai/generate.mjs';
+import { generateCells, generateSrcbook, healthcheck, streamEditApp, initMcpClients } from '../ai/generate.mjs';
 import { streamParsePlan } from '../ai/plan-parser.mjs';
 import {
   getConfig,
@@ -866,6 +866,8 @@ router.get('/mcp/servers', cors(), async (_req, res) => {
 router.post('/mcp/servers', cors(), async (req, res) => {
   try {
     const server = await addMcpServer(req.body);
+    // Refresh MCP client connections so newly added server becomes active
+    initMcpClients().catch((e) => console.error('Failed to refresh MCP clients:', e));
     return res.json({ data: server });
   } catch (e) {
     return error500(res, e as Error);
@@ -880,6 +882,8 @@ router.put('/mcp/servers/:id', cors(), async (req, res) => {
     if (!updated) {
       return res.status(404).json({ error: 'MCP server not found' });
     }
+    // Refresh MCP client connections to reflect updated config
+    initMcpClients().catch((e) => console.error('Failed to refresh MCP clients:', e));
     return res.json({ data: updated });
   } catch (e) {
     return error500(res, e as Error);
@@ -890,6 +894,8 @@ router.delete('/mcp/servers/:id', cors(), async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     await removeMcpServer(id);
+    // Refresh MCP client connections to disconnect removed server
+    initMcpClients().catch((e) => console.error('Failed to refresh MCP clients:', e));
     return res.json({ data: { success: true } });
   } catch (e) {
     return error500(res, e as Error);

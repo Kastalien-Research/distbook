@@ -32,8 +32,8 @@ export function registerNotebookTools(server: McpServer, deps: SrcbookDeps) {
         .describe('Programming language for the notebook'),
     },
     async ({ name, language }) => {
-      const result = await deps.createSrcbook(language, name);
-      const session = await deps.createSession(result.dir);
+      const dir = await deps.createSrcbook(name, language);
+      const session = await deps.createSession(dir);
       return {
         content: [
           {

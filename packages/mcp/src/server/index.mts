@@ -17,8 +17,8 @@ export type SrcbookDeps = {
   updateSession: (session: any, updates: any, flush?: boolean) => Promise<any>;
   exportSrcmdText: (session: any) => string;
 
-  // Srcbook creation
-  createSrcbook: (language: string, name?: string) => Promise<{ dir: string; srcbookId: string }>;
+  // Srcbook creation — returns the directory path string
+  createSrcbook: (title: string, language: string) => Promise<string>;
   removeSrcbook: (dir: string) => Promise<void>;
   srcbooksDir: string;
 

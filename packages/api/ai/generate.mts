@@ -15,6 +15,47 @@ import { encode, decodeCells } from '../srcmd.mjs';
 import { buildProjectXml, type FileContent } from '../ai/app-parser.mjs';
 import { logAppGeneration } from './logger.mjs';
 import { mcpClientManager, mcpToolsToVercelTools } from '@srcbook/mcp';
+import { getMcpServers } from '../config.mjs';
+
+let mcpClientsInitialized = false;
+
+/**
+ * Load enabled MCP server configs from the DB and connect them.
+ * Called lazily on first AI generation request, and can be re-called
+ * to refresh connections after config changes.
+ */
+export async function initMcpClients(): Promise<void> {
+  try {
+    const servers = await getMcpServers();
+    const enabledServers = servers.filter((s) => s.enabled);
+
+    // Disconnect any servers that are no longer in the config
+    const connectedNames = new Set(
+      mcpClientManager.listConnectedServers().map((s) => s.name),
+    );
+    const enabledNames = new Set(enabledServers.map((s) => s.name));
+    for (const name of connectedNames) {
+      if (!enabledNames.has(name)) {
+        await mcpClientManager.disconnect(name);
+      }
+    }
+
+    // Connect new/updated servers
+    for (const server of enabledServers) {
+      if (!mcpClientManager.isConnected(server.name)) {
+        try {
+          await mcpClientManager.connect(server);
+        } catch (e) {
+          console.error(`Failed to connect MCP server "${server.name}":`, (e as Error).message);
+        }
+      }
+    }
+
+    mcpClientsInitialized = true;
+  } catch (e) {
+    console.error('Failed to initialize MCP clients:', (e as Error).message);
+  }
+}
 
 /**
  * Get MCP tools from all connected external MCP servers.
@@ -22,6 +63,10 @@ import { mcpClientManager, mcpToolsToVercelTools } from '@srcbook/mcp';
  */
 async function getMcpTools(): Promise<Record<string, any>> {
   try {
+    // Lazily initialize MCP clients on first use
+    if (!mcpClientsInitialized) {
+      await initMcpClients();
+    }
     const tools = mcpClientManager.getAllTools();
     if (tools.length === 0) return {};
     return mcpToolsToVercelTools(tools, mcpClientManager);
