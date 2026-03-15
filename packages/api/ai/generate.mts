@@ -14,6 +14,70 @@ import { PROMPTS_DIR } from '../constants.mjs';
 import { encode, decodeCells } from '../srcmd.mjs';
 import { buildProjectXml, type FileContent } from '../ai/app-parser.mjs';
 import { logAppGeneration } from './logger.mjs';
+import { mcpClientManager, mcpToolsToVercelTools } from '@srcbook/mcp';
+import { getMcpServers } from '../config.mjs';
+
+let mcpClientsInitialized = false;
+
+/**
+ * Load enabled MCP server configs from the DB and connect them.
+ * Called lazily on first AI generation request, and can be re-called
+ * to refresh connections after config changes.
+ */
+export async function initMcpClients(): Promise<void> {
+  try {
+    const servers = await getMcpServers();
+    const enabledServers = servers.filter((s) => s.enabled);
+
+    // Disconnect any servers that are no longer enabled or in the config
+    const connectedNames = new Set(
+      mcpClientManager.listConnectedServers().map((s) => s.name),
+    );
+    const enabledNames = new Set(enabledServers.map((s) => s.name));
+    for (const name of connectedNames) {
+      if (!enabledNames.has(name)) {
+        await mcpClientManager.disconnect(name);
+      }
+    }
+
+    // Connect (or reconnect) all enabled servers. McpClientManager.connect()
+    // internally disconnects any existing connection with the same name first,
+    // so this correctly picks up config changes (updated URL, command, args, etc.)
+    let allConnected = true;
+    for (const server of enabledServers) {
+      try {
+        await mcpClientManager.connect(server);
+      } catch (e) {
+        allConnected = false;
+        console.error(`Failed to connect MCP server "${server.name}":`, (e as Error).message);
+      }
+    }
+
+    // Only mark as initialized if all servers connected successfully.
+    // If any failed, subsequent getMcpTools() calls will retry.
+    mcpClientsInitialized = allConnected;
+  } catch (e) {
+    console.error('Failed to initialize MCP clients:', (e as Error).message);
+  }
+}
+
+/**
+ * Get MCP tools from all connected external MCP servers.
+ * Returns an empty object if no servers are connected.
+ */
+async function getMcpTools(): Promise<Record<string, any>> {
+  try {
+    // Lazily initialize MCP clients on first use
+    if (!mcpClientsInitialized) {
+      await initMcpClients();
+    }
+    const tools = mcpClientManager.getAllTools();
+    if (tools.length === 0) return {};
+    return mcpToolsToVercelTools(tools, mcpClientManager);
+  } catch {
+    return {};
+  }
+}
 
 const makeGenerateSrcbookSystemPrompt = () => {
   return readFileSync(Path.join(PROMPTS_DIR, 'srcbook-generator.txt'), 'utf-8');
@@ -184,6 +248,8 @@ export async function generateCells(
   insertIdx: number,
 ): Promise<GenerateCellsResult> {
   const model = await getModel();
+  const mcpTools = await getMcpTools();
+  const hasTools = Object.keys(mcpTools).length > 0;
 
   const systemPrompt = makeGenerateCellSystemPrompt(session.language);
   const userPrompt = makeGenerateCellUserPrompt(session, insertIdx, query);
@@ -191,6 +257,7 @@ export async function generateCells(
     model,
     system: systemPrompt,
     prompt: userPrompt,
+    ...(hasTools ? { tools: mcpTools, maxSteps: 10 } : {}),
   });
 
   // TODO, handle 'length' finish reason with sequencing logic.
@@ -212,6 +279,8 @@ export async function generateCells(
 
 export async function generateCellEdit(query: string, session: SessionType, cell: CodeCellType) {
   const model = await getModel();
+  const mcpTools = await getMcpTools();
+  const hasTools = Object.keys(mcpTools).length > 0;
 
   const systemPrompt = makeGenerateCellEditSystemPrompt(session.language);
   const userPrompt = makeGenerateCellEditUserPrompt(query, session, cell);
@@ -219,6 +288,7 @@ export async function generateCellEdit(query: string, session: SessionType, cell
     model,
     system: systemPrompt,
     prompt: userPrompt,
+    ...(hasTools ? { tools: mcpTools, maxSteps: 10 } : {}),
   });
 
   return result.text;
@@ -230,6 +300,8 @@ export async function fixDiagnostics(
   diagnostics: string,
 ): Promise<string> {
   const model = await getModel();
+  const mcpTools = await getMcpTools();
+  const hasTools = Object.keys(mcpTools).length > 0;
 
   const systemPrompt = makeFixDiagnosticsSystemPrompt();
   const userPrompt = makeFixDiagnosticsUserPrompt(session, cell, diagnostics);
@@ -238,6 +310,7 @@ export async function fixDiagnostics(
     model,
     system: systemPrompt,
     prompt: userPrompt,
+    ...(hasTools ? { tools: mcpTools, maxSteps: 10 } : {}),
   });
 
   return result.text;
@@ -249,10 +322,14 @@ export async function generateApp(
   query: string,
 ): Promise<string> {
   const model = await getModel();
+  const mcpTools = await getMcpTools();
+  const hasTools = Object.keys(mcpTools).length > 0;
+
   const result = await generateText({
     model,
     system: makeAppBuilderSystemPrompt(),
     prompt: makeAppCreateUserPrompt(projectId, files, query),
+    ...(hasTools ? { tools: mcpTools, maxSteps: 10 } : {}),
   });
   return result.text;
 }
@@ -265,6 +342,8 @@ export async function streamEditApp(
   planId: string,
 ) {
   const model = await getModel();
+  const mcpTools = await getMcpTools();
+  const hasTools = Object.keys(mcpTools).length > 0;
 
   const systemPrompt = makeAppEditorSystemPrompt();
   const userPrompt = makeAppEditorUserPrompt(projectId, files, query);
@@ -275,6 +354,7 @@ export async function streamEditApp(
     model,
     system: systemPrompt,
     prompt: userPrompt,
+    ...(hasTools ? { tools: mcpTools, maxSteps: 10 } : {}),
     onChunk: (chunk) => {
       if (chunk.chunk.type === 'text-delta') {
         response += chunk.chunk.textDelta;

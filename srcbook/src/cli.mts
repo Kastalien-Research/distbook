@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { Command } from 'commander';
 import { pathTo, getPackageJson, isPortAvailable } from './utils.mjs';
 import open from 'open';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 
 function openInBrowser(url: string) {
   open(url).then(
@@ -73,6 +74,52 @@ export default function program() {
       startServer(port, () => {
         doImport(specifier, port);
       });
+    });
+
+  program
+    .command('mcp-server')
+    .description('Start Srcbook as an MCP server over stdio (for Claude Desktop integration)')
+    .action(async () => {
+      // Dynamically import to avoid loading the full API on every CLI invocation
+      const api = await import('@srcbook/api');
+      const { createSrcbookMcpServer } = await import('@srcbook/mcp');
+      const { SRCBOOKS_DIR } = api;
+
+      const deps = {
+        listSessions: api.listSessions,
+        createSession: api.createSession,
+        findSession: api.findSession,
+        addCell: api.addCell,
+        updateCell: api.updateCell,
+        findCell: api.findCell,
+        removeCell: api.removeCell,
+        updateSession: api.updateSession,
+        exportSrcmdText: api.exportSrcmdText,
+        createSrcbook: api.createSrcbook,
+        removeSrcbook: api.removeSrcbook,
+        srcbooksDir: SRCBOOKS_DIR,
+        executeCellPromise: api.executeCellPromise,
+        getSecretsAssociatedWithSession: api.getSecretsAssociatedWithSession,
+        loadApps: api.loadApps,
+        loadApp: api.loadApp,
+        createApp: api.createApp,
+        createAppWithAi: api.createAppWithAi,
+        serializeApp: api.serializeApp,
+        deleteApp: api.deleteApp,
+        updateApp: api.updateApp,
+        getFlatFilesForApp: api.getFlatFilesForApp,
+        loadFile: async (appId: string, path: string) => {
+          const result = await api.loadFile(appId, path);
+          return { content: typeof result === 'string' ? result : JSON.stringify(result) };
+        },
+        createFile: api.createFile,
+        getConfig: api.getConfig,
+        updateConfig: api.updateConfig,
+      };
+
+      const mcpServer = createSrcbookMcpServer(deps);
+      const transport = new StdioServerTransport();
+      await mcpServer.connect(transport);
     });
 
   program.parse();

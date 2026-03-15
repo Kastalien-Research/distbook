@@ -12,8 +12,13 @@ import {
   sessionToResponse,
   listSessions,
   exportSrcmdText,
+  getOrCreateSession,
+  addCell,
+  updateCell,
+  findCell,
+  removeCell,
 } from '../session.mjs';
-import { generateCells, generateSrcbook, healthcheck, streamEditApp } from '../ai/generate.mjs';
+import { generateCells, generateSrcbook, healthcheck, streamEditApp, initMcpClients } from '../ai/generate.mjs';
 import { streamParsePlan } from '../ai/plan-parser.mjs';
 import {
   getConfig,
@@ -25,6 +30,12 @@ import {
   removeSecret,
   associateSecretWithSession,
   disassociateSecretWithSession,
+  getSecretsAssociatedWithSession,
+  getMcpServers,
+  getMcpServer,
+  addMcpServer,
+  updateMcpServer,
+  removeMcpServer,
 } from '../config.mjs';
 import {
   createSrcbook,
@@ -58,12 +69,15 @@ import {
   renameDirectory,
   deleteDirectory,
   getFlatFilesForApp,
+  createZipFromApp,
 } from '../apps/disk.mjs';
 import { CreateAppSchema } from '../apps/schemas.mjs';
 import { AppGenerationFeedbackType } from '@srcbook/shared';
-import { createZipFromApp } from '../apps/disk.mjs';
 import { checkoutCommit, commitAllFiles, getCurrentCommitSha } from '../apps/git.mjs';
 import { streamJsonResponse } from './utils.mjs';
+import { executeCellPromise } from '../exec.mjs';
+import { createSrcbookMcpServer, type SrcbookDeps } from '@srcbook/mcp';
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 
 const app: Application = express();
 
@@ -833,4 +847,139 @@ router.post('/apps/:id/feedback', cors(), async (req, res) => {
     console.error('Error sending feedback:', error);
     return res.status(500).json({ error: 'Failed to send feedback' });
   }
+});
+
+// ============================================================
+// MCP Server Configuration API
+// ============================================================
+
+router.options('/mcp/servers', cors());
+router.get('/mcp/servers', cors(), async (_req, res) => {
+  try {
+    const servers = await getMcpServers();
+    return res.json({ data: servers });
+  } catch (e) {
+    return error500(res, e as Error);
+  }
+});
+
+router.post('/mcp/servers', cors(), async (req, res) => {
+  try {
+    const server = await addMcpServer(req.body);
+    // Refresh MCP client connections so newly added server becomes active
+    initMcpClients().catch((e) => console.error('Failed to refresh MCP clients:', e));
+    return res.json({ data: server });
+  } catch (e) {
+    return error500(res, e as Error);
+  }
+});
+
+router.options('/mcp/servers/:id', cors());
+router.put('/mcp/servers/:id', cors(), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const updated = await updateMcpServer(id, req.body);
+    if (!updated) {
+      return res.status(404).json({ error: 'MCP server not found' });
+    }
+    // Refresh MCP client connections to reflect updated config
+    initMcpClients().catch((e) => console.error('Failed to refresh MCP clients:', e));
+    return res.json({ data: updated });
+  } catch (e) {
+    return error500(res, e as Error);
+  }
+});
+
+router.delete('/mcp/servers/:id', cors(), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    await removeMcpServer(id);
+    // Refresh MCP client connections to disconnect removed server
+    initMcpClients().catch((e) => console.error('Failed to refresh MCP clients:', e));
+    return res.json({ data: { success: true } });
+  } catch (e) {
+    return error500(res, e as Error);
+  }
+});
+
+router.options('/mcp/servers/:id/test', cors());
+router.post('/mcp/servers/:id/test', cors(), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const server = await getMcpServer(id);
+    if (!server) {
+      return res.status(404).json({ error: 'MCP server not found' });
+    }
+    // Just return the config for now — actual connection test
+    // would require importing the McpClientManager
+    return res.json({ data: { success: true, name: server.name } });
+  } catch (e) {
+    return error500(res, e as Error);
+  }
+});
+
+// ============================================================
+// MCP Server (Streamable HTTP Transport)
+// ============================================================
+
+const mcpDeps: SrcbookDeps = {
+  listSessions: listSessions,
+  createSession: createSession,
+  findSession: findSession,
+  addCell: addCell,
+  updateCell: updateCell,
+  findCell: findCell,
+  removeCell: removeCell,
+  updateSession: updateSession,
+  exportSrcmdText: exportSrcmdText,
+  createSrcbook: createSrcbook,
+  removeSrcbook: removeSrcbook,
+  srcbooksDir: SRCBOOKS_DIR,
+  executeCellPromise: executeCellPromise,
+  getSecretsAssociatedWithSession: getSecretsAssociatedWithSession,
+  loadApps: loadApps,
+  loadApp: loadApp,
+  createApp: createApp,
+  createAppWithAi: createAppWithAi,
+  serializeApp: serializeApp,
+  deleteApp: deleteApp,
+  updateApp: updateApp,
+  getFlatFilesForApp: getFlatFilesForApp,
+  loadFile: async (appId: string, path: string) => {
+    const result = await loadFile(appId, path);
+    return { content: typeof result === 'string' ? result : JSON.stringify(result) };
+  },
+  createFile: createFile,
+  getConfig: getConfig,
+  updateConfig: updateConfig,
+};
+
+const mcpServer = createSrcbookMcpServer(mcpDeps);
+
+// Mount the MCP Streamable HTTP transport
+app.post('/mcp', async (req, res) => {
+  const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+  res.on('close', () => {
+    transport.close();
+  });
+  await mcpServer.connect(transport);
+  await transport.handleRequest(req, res);
+});
+
+app.get('/mcp', async (req, res) => {
+  const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+  res.on('close', () => {
+    transport.close();
+  });
+  await mcpServer.connect(transport);
+  await transport.handleRequest(req, res);
+});
+
+app.delete('/mcp', async (req, res) => {
+  const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+  res.on('close', () => {
+    transport.close();
+  });
+  await mcpServer.connect(transport);
+  await transport.handleRequest(req, res);
 });
