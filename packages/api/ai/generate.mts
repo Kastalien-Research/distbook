@@ -29,7 +29,7 @@ export async function initMcpClients(): Promise<void> {
     const servers = await getMcpServers();
     const enabledServers = servers.filter((s) => s.enabled);
 
-    // Disconnect any servers that are no longer in the config
+    // Disconnect any servers that are no longer enabled or in the config
     const connectedNames = new Set(
       mcpClientManager.listConnectedServers().map((s) => s.name),
     );
@@ -40,18 +40,22 @@ export async function initMcpClients(): Promise<void> {
       }
     }
 
-    // Connect new/updated servers
+    // Connect (or reconnect) all enabled servers. McpClientManager.connect()
+    // internally disconnects any existing connection with the same name first,
+    // so this correctly picks up config changes (updated URL, command, args, etc.)
+    let allConnected = true;
     for (const server of enabledServers) {
-      if (!mcpClientManager.isConnected(server.name)) {
-        try {
-          await mcpClientManager.connect(server);
-        } catch (e) {
-          console.error(`Failed to connect MCP server "${server.name}":`, (e as Error).message);
-        }
+      try {
+        await mcpClientManager.connect(server);
+      } catch (e) {
+        allConnected = false;
+        console.error(`Failed to connect MCP server "${server.name}":`, (e as Error).message);
       }
     }
 
-    mcpClientsInitialized = true;
+    // Only mark as initialized if all servers connected successfully.
+    // If any failed, subsequent getMcpTools() calls will retry.
+    mcpClientsInitialized = allConnected;
   } catch (e) {
     console.error('Failed to initialize MCP clients:', (e as Error).message);
   }
