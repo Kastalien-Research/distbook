@@ -170,3 +170,48 @@ export function vite(options: NpxRequestType) {
     env: process.env,
   });
 }
+
+export type ExecuteCellPromiseOptions = {
+  cwd: string;
+  env: NodeJS.ProcessEnv;
+  entry: string;
+  command: string; // 'node' or 'tsx'
+};
+
+/**
+ * Promise-based cell execution wrapper.
+ * Collects stdout/stderr and resolves with the exit code.
+ * Used by the MCP server to expose cell execution as a tool.
+ */
+export function executeCellPromise(
+  options: ExecuteCellPromiseOptions,
+): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+  return new Promise((resolve) => {
+    let stdout = '';
+    let stderr = '';
+
+    const command =
+      options.command === 'tsx'
+        ? Path.join(options.cwd, 'node_modules', '.bin', 'tsx')
+        : options.command;
+
+    spawnCall({
+      cwd: options.cwd,
+      env: options.env,
+      command,
+      args: [options.entry],
+      stdout: (data) => {
+        stdout += data.toString('utf8');
+      },
+      stderr: (data) => {
+        stderr += data.toString('utf8');
+      },
+      onExit: (code) => {
+        resolve({ stdout, stderr, exitCode: code ?? 1 });
+      },
+      onError: (err) => {
+        resolve({ stdout, stderr: stderr + '\n' + err.message, exitCode: 1 });
+      },
+    });
+  });
+}

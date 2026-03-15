@@ -134,6 +134,19 @@ export async function findSession(id: string): Promise<SessionType> {
   return sessions[id] as SessionType;
 }
 
+/**
+ * Find a session by ID, or create it from disk if not yet loaded.
+ * Used by the MCP server to lazily load sessions.
+ */
+export async function getOrCreateSession(id: string): Promise<SessionType> {
+  if (sessions[id]) {
+    return sessions[id] as SessionType;
+  }
+  // Try to load from disk
+  const srcbookDir = Path.join(SRCBOOKS_DIR, id);
+  return createSession(srcbookDir);
+}
+
 type UpdateResultType =
   | { success: true; cell: CellType }
   | { success: false; errors: CellErrorType[] };

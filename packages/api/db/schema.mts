@@ -64,3 +64,16 @@ export const apps = sqliteTable('apps', {
 });
 
 export type App = typeof apps.$inferSelect;
+
+export const mcpServers = sqliteTable('mcp_servers', {
+  id: integer('id').primaryKey(),
+  name: text('name').notNull().unique(),
+  transport: text('transport').notNull().default('stdio'), // 'stdio' or 'http'
+  command: text('command'), // for stdio transport
+  args: text('args'), // JSON-encoded string[]
+  url: text('url'), // for HTTP transport
+  env: text('env'), // JSON-encoded Record<string, string>
+  enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
+});
+
+export type McpServer = typeof mcpServers.$inferSelect;

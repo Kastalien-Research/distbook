@@ -23,6 +23,7 @@ import {
   TooltipTrigger,
 } from '@srcbook/components/src/components/ui/tooltip';
 import { toast } from 'sonner';
+import { McpServerSettings } from '@/components/mcp-server-config';
 
 function Settings() {
   const { updateConfig: updateConfigContext, defaultLanguage, subscriptionEmail } = useSettings();
@@ -95,6 +96,15 @@ function Settings() {
             </label>
           </div>
           <AiSettings />
+        </div>
+
+        <div>
+          <h2 className="text-base font-medium">MCP Servers</h2>
+          <label className="opacity-70 text-sm block mb-3">
+            Connect external MCP (Model Context Protocol) servers to give AI access to additional
+            tools like databases, file systems, and APIs.
+          </label>
+          <McpServerSettings />
         </div>
 
         <div>

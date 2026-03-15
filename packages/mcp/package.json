@@ -1,0 +1,25 @@
+{
+  "name": "@srcbook/mcp",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "files": [
+    "dist/**"
+  ],
+  "scripts": {
+    "prebuild": "rm -rf ./dist",
+    "build": "tsc",
+    "dev": "tsc --incremental --watch --project .",
+    "lint": "eslint . --max-warnings 0",
+    "check-types": "tsc"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "@srcbook/shared": "workspace:^",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "^22.5.4"
+  }
+}

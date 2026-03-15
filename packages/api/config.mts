@@ -8,6 +8,8 @@ import {
   type Secret,
   secretsToSession,
   apps,
+  mcpServers,
+  type McpServer,
 } from './db/schema.mjs';
 import { db } from './db/index.mjs';
 import { HOME_DIR } from './constants.mjs';
@@ -159,4 +161,38 @@ export async function disassociateSecretWithSession(secretName: string, sessionI
       and(eq(secretsToSession.secret_id, secretId), eq(secretsToSession.session_id, sessionId)),
     )
     .returning();
+}
+
+// MCP Server configuration CRUD
+
+export async function getMcpServers(): Promise<McpServer[]> {
+  return db.select().from(mcpServers);
+}
+
+export async function getMcpServer(id: number): Promise<McpServer | undefined> {
+  const results = await db.select().from(mcpServers).where(eq(mcpServers.id, id)).limit(1);
+  return results[0];
+}
+
+export async function addMcpServer(
+  attrs: Omit<McpServer, 'id'>,
+): Promise<McpServer> {
+  const [server] = await db.insert(mcpServers).values(attrs).returning();
+  return server as McpServer;
+}
+
+export async function updateMcpServer(
+  id: number,
+  attrs: Partial<Omit<McpServer, 'id'>>,
+): Promise<McpServer | undefined> {
+  const [updated] = await db
+    .update(mcpServers)
+    .set(attrs)
+    .where(eq(mcpServers.id, id))
+    .returning();
+  return updated;
+}
+
+export async function removeMcpServer(id: number): Promise<void> {
+  await db.delete(mcpServers).where(eq(mcpServers.id, id));
 }

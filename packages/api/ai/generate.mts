@@ -14,6 +14,21 @@ import { PROMPTS_DIR } from '../constants.mjs';
 import { encode, decodeCells } from '../srcmd.mjs';
 import { buildProjectXml, type FileContent } from '../ai/app-parser.mjs';
 import { logAppGeneration } from './logger.mjs';
+import { mcpClientManager, mcpToolsToVercelTools } from '@srcbook/mcp';
+
+/**
+ * Get MCP tools from all connected external MCP servers.
+ * Returns an empty object if no servers are connected.
+ */
+async function getMcpTools(): Promise<Record<string, any>> {
+  try {
+    const tools = mcpClientManager.getAllTools();
+    if (tools.length === 0) return {};
+    return mcpToolsToVercelTools(tools, mcpClientManager);
+  } catch {
+    return {};
+  }
+}
 
 const makeGenerateSrcbookSystemPrompt = () => {
   return readFileSync(Path.join(PROMPTS_DIR, 'srcbook-generator.txt'), 'utf-8');
@@ -184,6 +199,8 @@ export async function generateCells(
   insertIdx: number,
 ): Promise<GenerateCellsResult> {
   const model = await getModel();
+  const mcpTools = await getMcpTools();
+  const hasTools = Object.keys(mcpTools).length > 0;
 
   const systemPrompt = makeGenerateCellSystemPrompt(session.language);
   const userPrompt = makeGenerateCellUserPrompt(session, insertIdx, query);
@@ -191,6 +208,7 @@ export async function generateCells(
     model,
     system: systemPrompt,
     prompt: userPrompt,
+    ...(hasTools ? { tools: mcpTools, maxSteps: 10 } : {}),
   });
 
   // TODO, handle 'length' finish reason with sequencing logic.
@@ -212,6 +230,8 @@ export async function generateCells(
 
 export async function generateCellEdit(query: string, session: SessionType, cell: CodeCellType) {
   const model = await getModel();
+  const mcpTools = await getMcpTools();
+  const hasTools = Object.keys(mcpTools).length > 0;
 
   const systemPrompt = makeGenerateCellEditSystemPrompt(session.language);
   const userPrompt = makeGenerateCellEditUserPrompt(query, session, cell);
@@ -219,6 +239,7 @@ export async function generateCellEdit(query: string, session: SessionType, cell
     model,
     system: systemPrompt,
     prompt: userPrompt,
+    ...(hasTools ? { tools: mcpTools, maxSteps: 10 } : {}),
   });
 
   return result.text;
@@ -230,6 +251,8 @@ export async function fixDiagnostics(
   diagnostics: string,
 ): Promise<string> {
   const model = await getModel();
+  const mcpTools = await getMcpTools();
+  const hasTools = Object.keys(mcpTools).length > 0;
 
   const systemPrompt = makeFixDiagnosticsSystemPrompt();
   const userPrompt = makeFixDiagnosticsUserPrompt(session, cell, diagnostics);
@@ -238,6 +261,7 @@ export async function fixDiagnostics(
     model,
     system: systemPrompt,
     prompt: userPrompt,
+    ...(hasTools ? { tools: mcpTools, maxSteps: 10 } : {}),
   });
 
   return result.text;
@@ -249,10 +273,14 @@ export async function generateApp(
   query: string,
 ): Promise<string> {
   const model = await getModel();
+  const mcpTools = await getMcpTools();
+  const hasTools = Object.keys(mcpTools).length > 0;
+
   const result = await generateText({
     model,
     system: makeAppBuilderSystemPrompt(),
     prompt: makeAppCreateUserPrompt(projectId, files, query),
+    ...(hasTools ? { tools: mcpTools, maxSteps: 10 } : {}),
   });
   return result.text;
 }
@@ -265,6 +293,8 @@ export async function streamEditApp(
   planId: string,
 ) {
   const model = await getModel();
+  const mcpTools = await getMcpTools();
+  const hasTools = Object.keys(mcpTools).length > 0;
 
   const systemPrompt = makeAppEditorSystemPrompt();
   const userPrompt = makeAppEditorUserPrompt(projectId, files, query);
@@ -275,6 +305,7 @@ export async function streamEditApp(
     model,
     system: systemPrompt,
     prompt: userPrompt,
+    ...(hasTools ? { tools: mcpTools, maxSteps: 10 } : {}),
     onChunk: (chunk) => {
       if (chunk.chunk.type === 'text-delta') {
         response += chunk.chunk.textDelta;
