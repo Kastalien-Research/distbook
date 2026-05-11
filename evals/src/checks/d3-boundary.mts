@@ -20,6 +20,8 @@ export type RunD3Input = {
   boundary: Boundary;
 };
 
+// runD3 is pure (no I/O); the async signature is for ergonomic parity with
+// the other runD* checks so callers can Promise.all them uniformly.
 export async function runD3(input: RunD3Input): Promise<Finding[]> {
   const { doc, source, boundary } = input;
   const findings: Finding[] = [];
