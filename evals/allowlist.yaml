@@ -1,3 +1,54 @@
 # Each entry overrides a finding. Every entry requires a reason.
 # Schema: { check, in_doc?, scope, section_heading?, pattern?, reason, approved_by, approved_at }
-entries: []
+entries:
+  # mvp-build-plan.md — section enumerates "New files likely to be added".
+  - check: D4
+    in_doc: docs/spec/mvp-build-plan.md
+    scope: section
+    section_heading: New files likely to be added
+    pattern: packages/api/notebook-skills/*
+    reason: Proposal paths under "New files likely to be added" — not yet built.
+    approved_by: kastalienresearch
+    approved_at: '2026-05-11'
+  - check: D4
+    in_doc: docs/spec/mvp-build-plan.md
+    scope: section
+    section_heading: New files likely to be added
+    pattern: packages/api/test/notebook-skills/*
+    reason: Proposal test paths mirroring the notebook-skills runtime tree.
+    approved_by: kastalienresearch
+    approved_at: '2026-05-11'
+  - check: D4
+    in_doc: docs/spec/mvp-build-plan.md
+    scope: section
+    section_heading: New files likely to be added
+    pattern: packages/shared/src/schemas/notebook-skills.mts
+    reason: Proposal schema for notebook-skills runtime.
+    approved_by: kastalienresearch
+    approved_at: '2026-05-11'
+  - check: D4
+    in_doc: docs/spec/mvp-build-plan.md
+    scope: section
+    section_heading: New files likely to be added
+    pattern: packages/shared/src/types/notebook-skills.mts
+    reason: Proposal types for notebook-skills runtime.
+    approved_by: kastalienresearch
+    approved_at: '2026-05-11'
+
+  # notebook-skills-runtime-v0.md — section 16 is the Effect-TS architecture proposal.
+  - check: D4
+    in_doc: docs/spec/notebook-skills-runtime-v0.md
+    scope: section
+    section_heading: '16. Effect-TS architecture proposal'
+    pattern: packages/api/notebook-skills/*
+    reason: Proposal paths in the Effect-TS architecture section.
+    approved_by: kastalienresearch
+    approved_at: '2026-05-11'
+  - check: D4
+    in_doc: docs/spec/notebook-skills-runtime-v0.md
+    scope: section
+    section_heading: '16. Effect-TS architecture proposal'
+    pattern: packages/shared/src/schemas/notebook-skills.mts
+    reason: Proposal schema in the Effect-TS architecture section.
+    approved_by: kastalienresearch
+    approved_at: '2026-05-11'
