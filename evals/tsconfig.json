@@ -1,0 +1,13 @@
+{
+  "extends": "@srcbook/configs/ts/base.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "verbatimModuleSyntax": true,
+    "types": ["node", "vitest/globals"],
+    "rootDir": "src"
+  },
+  "include": ["src/**/*.mts", "src/**/*.ts"]
+}

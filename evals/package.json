@@ -1,0 +1,28 @@
+{
+  "name": "@distbook/evals",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "eval": "tsx src/cli.mts run",
+    "eval:notebook": "tsx src/cli.mts run-notebook notebooks/eval-discovery-spec.src.md",
+    "check-types": "tsc --noEmit",
+    "lint": "oxlint --deny-warnings",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@srcbook/api": "workspace:^",
+    "@openai/agents": "^0.3.9",
+    "js-yaml": "^4.1.0",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@srcbook/configs": "workspace:^",
+    "@types/js-yaml": "^4.0.9",
+    "tsx": "*",
+    "vitest": "^2.0.5",
+    "oxlint": "*",
+    "@types/node": "*",
+    "typescript": "*"
+  }
+}

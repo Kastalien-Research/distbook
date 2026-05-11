@@ -42,7 +42,13 @@ srcbook/lib/**/*
 # Aide
 *.code-workspace
 
-# Docs folder
+# Docs folder (trailing slash matches directory; bare name also matches the symlink
+# created by evals/scripts/link-docs.sh)
+docs
 docs/
 
 vite.config.ts.timestamp-*.mjs
+
+# evals
+evals/runs/*.json
+!evals/runs/.gitkeep

@@ -1,0 +1,34 @@
+prompt_path: docs/superpowers/prompts/2026-05-10-codex-discovery-orchestration.md
+
+repo_roots:
+  - packages/
+  - srcbook/
+
+required_files:
+  discovery:
+    - docs/discovery/00-repo-map.md
+    - docs/discovery/01-notebook-runtime.md
+    - docs/discovery/02-app-builder-archaeology.md
+    - docs/discovery/03-execution-and-safety.md
+    - docs/discovery/04-agent-skills-comparison.md
+    - docs/discovery/05-effect-ts-feasibility.md
+    - docs/discovery/06-product-ux-inheritance.md
+  spec:
+    - docs/spec/mvp-build-plan.md
+    - docs/spec/notebook-skills-runtime-v0.md
+    - docs/spec/open-questions.md
+
+boundaries:
+  - topic: app_builder_removal
+    commit: c7a52cc
+    keywords:
+      - 'before removal'
+      - 'pre-removal'
+      - 'removal commit'
+      - 'app-builder removal'
+      - 'last pre-removal'
+
+analysis_refs:
+  default: HEAD
+  per_doc:
+    'docs/discovery/02-app-builder-archaeology.md': 'c7a52cc^'
