@@ -51,7 +51,7 @@ describe('prototype notebook integration', () => {
     );
     const result = JSON.parse(stdout);
     expect(result.summary.blocker).toBe(1);
-    expect(result.findings[0].id).toBe('D2-app-builder-removal-claim');
-    expect(result.findings[0].detail).toContain('c7a52cc');
+    expect(result.blockers[0].id).toBe('D2-app-builder-removal-claim');
+    expect(result.blockers[0].detail).toContain('c7a52cc');
   });
 });

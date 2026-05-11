@@ -12,6 +12,7 @@ describe('runner', () => {
       env: { REPO_PATH: ROOT },
     });
     expect(result.scorecardJson.summary.blocker).toBe(1);
-    expect(result.scorecardJson.findings[0].id).toBe('D2-app-builder-removal-claim');
+    expect(result.scorecardJson.summary.verdict).toBe('blocker');
+    expect(result.scorecardJson.blockers[0]!.id).toBe('D2-app-builder-removal-claim');
   });
 });

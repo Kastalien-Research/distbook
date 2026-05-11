@@ -4,6 +4,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { tmpdir } from 'node:os';
 import { join, basename } from 'node:path';
+import { ScorecardSchema, type Scorecard } from './scorecard.mts';
 
 const exec = promisify(execFile);
 
@@ -15,7 +16,7 @@ export type RunNotebookInput = {
 export type RunNotebookResult = {
   workDir: string;
   cellOutputs: Array<{ filename: string; stdout: string; stderr: string }>;
-  scorecardJson: any;
+  scorecardJson: Scorecard;
 };
 
 type Cell = { filename: string; lang: string; source: string };
@@ -46,7 +47,7 @@ export async function runNotebook(input: RunNotebookInput): Promise<RunNotebookR
 
   const codeCells = cells.filter((c) => c.lang === 'typescript');
   const outputs: RunNotebookResult['cellOutputs'] = [];
-  let scorecardJson: any = null;
+  let scorecardJson: Scorecard | null = null;
   const env = input.env ? { ...process.env, ...input.env } : { ...process.env };
 
   for (const c of codeCells) {
@@ -59,7 +60,7 @@ export async function runNotebook(input: RunNotebookInput): Promise<RunNotebookR
       );
       outputs.push({ filename: c.filename, stdout, stderr });
       if (c.filename.startsWith('90-')) {
-        scorecardJson = JSON.parse(stdout);
+        scorecardJson = ScorecardSchema.parse(JSON.parse(stdout));
       }
     } catch (e: any) {
       outputs.push({
