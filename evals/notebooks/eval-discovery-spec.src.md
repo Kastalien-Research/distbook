@@ -24,14 +24,10 @@ Pass `SEMANTIC_ENABLED=0` (or `--no-semantic` via the CLI) to skip cell `80-sema
 ###### 00-config.ts
 
 ```typescript
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import { readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import yaml from 'js-yaml';
-
-const exec = promisify(execFile);
 
 export const REPO_PATH = process.env.REPO_PATH ?? process.cwd();
 export const ANALYSIS_REF = process.env.ANALYSIS_REF ?? 'HEAD';
@@ -62,7 +58,7 @@ export async function readDoc(docPath: string): Promise<string> {
 }
 
 /**
- * Invoke a module from evals/src/ via a child node process.
+ * Invoke a module from evals/src/ in-process via dynamic import.
  * modulePath is relative to evals/src/ without extension,
  * e.g. 'checks/d1-required-files' or 'scorecard'.
  * args is spread if it is an array, otherwise passed as a single argument.
@@ -72,27 +68,13 @@ export async function invokeCheck(
   exportName: string,
   args: unknown,
 ): Promise<unknown> {
-  const argsJson = JSON.stringify(args);
-  const driver = `
-import { ${exportName} } from '${REPO_PATH}/evals/src/${modulePath}.mts';
-const args = JSON.parse(process.argv[1]);
-const out = Array.isArray(args) ? await ${exportName}(...args) : await ${exportName}(args);
-console.log(JSON.stringify(out));
-`;
-  const { stdout } = await exec(
-    'node',
-    [
-      '--experimental-strip-types',
-      '--no-warnings',
-      '--input-type=module',
-      '-e',
-      driver,
-      '--',
-      argsJson,
-    ],
-    { env: { ...process.env }, maxBuffer: 50 * 1024 * 1024 },
-  );
-  return JSON.parse(stdout);
+  const fullPath = `${REPO_PATH}/evals/src/${modulePath}.mts`;
+  const mod = (await import(fullPath)) as Record<string, unknown>;
+  const fn = mod[exportName];
+  if (typeof fn !== 'function') {
+    throw new Error(`Export '${exportName}' not found in ${fullPath}`);
+  }
+  return Array.isArray(args) ? await fn(...args) : await fn(args);
 }
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -183,6 +165,7 @@ const cfg = await loadConfig();
 const required = cfg['required_files'] as Record<string, string[]>;
 const docs = [...required['discovery']!, ...required['spec']!];
 const boundaries = cfg['boundaries'] as Array<Record<string, unknown>>;
+// TODO: v1 — loop over all boundaries, not just cfg.boundaries[0].
 const boundary = boundaries[0]!;
 
 const all: Finding[] = [];
@@ -361,18 +344,23 @@ import {
 const all: Finding[] = [];
 
 if (SEMANTIC_ENABLED) {
-  const cfg = await loadConfig();
-  const required = cfg['required_files'] as Record<string, string[]>;
-  const specDocs = required['spec']!;
-  for (const doc of specDocs) {
-    const source = await readDoc(doc);
-    const claims = await invokeCheck('semantic/extractor', 'extractClaims', source);
-    const findings = (await invokeCheck('semantic/router', 'routeClaims', {
-      repoPath: REPO_PATH,
-      doc,
-      claims,
-    })) as Finding[];
-    all.push(...findings);
+  if (!process.env.OPENAI_API_KEY) {
+    console.error(
+      '80-semantic: SEMANTIC_ENABLED is on but OPENAI_API_KEY is missing; skipping semantic checks',
+    );
+  } else {
+    const cfg = await loadConfig();
+    const docs = cfg.required_files.spec;
+    for (const doc of docs) {
+      const source = await readDoc(doc);
+      const claims = await invokeCheck('semantic/extractor', 'extractClaims', source);
+      const findings = (await invokeCheck('semantic/router', 'routeClaims', {
+        repoPath: REPO_PATH,
+        doc,
+        claims,
+      })) as Finding[];
+      all.push(...findings);
+    }
   }
 }
 

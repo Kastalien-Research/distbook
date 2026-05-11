@@ -27,3 +27,9 @@ Things we discussed and decided to defer past v0. Not bugs; not blockers. Captur
 - **Fixture vs inline test data.** Norm: ">3 lines → fixture file; otherwise inline." Not enforced.
 - **`runD3` is async with no awaits.** Deliberate for `Promise.all` parity with the other `runD*` checks; documented inline.
 - **D5 is sync.** Plan-spec divergence from the other `runD*` signatures. Deliberate.
+
+## Allowlist authoring (v0 ships empty)
+
+The production notebook produces ~22 D4 blockers against spec-cited paths that are intentionally proposal-state (`packages/api/notebook-skills/*` is the canonical example — not built yet, but referenced in spec). These need section-scoped `allowlist.yaml` entries to flip from blocker → pass-with-annotation.
+
+The schema (`evals/src/config.mts:AllowlistEntrySchema`) requires `reason`, `approved_by`, `approved_at` per entry. Author them once the spec sections stabilize.
