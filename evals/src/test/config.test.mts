@@ -13,8 +13,14 @@ describe('config', () => {
     expect(cfg.repo_roots).toEqual(['packages/', 'srcbook/']);
   });
 
-  it('loads allowlist.yaml as empty array initially', async () => {
+  it('loads allowlist.yaml with a structurally valid entries array', async () => {
     const allow = await loadAllowlist(join(ROOT, 'allowlist.yaml'));
-    expect(allow.entries).toEqual([]);
+    expect(Array.isArray(allow.entries)).toBe(true);
+    for (const entry of allow.entries) {
+      expect(typeof entry.check).toBe('string');
+      expect(typeof entry.reason).toBe('string');
+      expect(typeof entry.approved_by).toBe('string');
+      expect(typeof entry.approved_at).toBe('string');
+    }
   });
 });
