@@ -83,6 +83,11 @@ export async function writeFindings(id: string, findings: Finding[]): Promise<vo
   await writeFile(`${__dirname}/findings-${id}.json`, JSON.stringify(findings, null, 2), 'utf8');
 }
 
+export async function getPromptSpec(): Promise<unknown> {
+  const cfg = await loadConfig();
+  return invokeCheck('prompt-spec', 'loadPromptSpec', `${REPO_PATH}/${cfg['prompt_path'] as string}`);
+}
+
 if (import.meta.url === `file://${process.argv[1]}`) {
   console.log(JSON.stringify({ REPO_PATH, ANALYSIS_REF, SEMANTIC_ENABLED, RUN_ID }));
 }
@@ -108,6 +113,56 @@ await writeFindings('d1', findings);
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   console.log(JSON.stringify({ d1Findings: findings.length }));
+}
+```
+
+## C1 — Prompt-spec topic coverage
+
+Verifies that every topic declared in the prompt's `prompt_spec` front-matter is addressed by
+at least one heading across the evaluated docs. If the prompt has no `prompt_spec` block, emits
+a single pass record so the check is visible in the scorecard without blocking.
+
+###### 15-c1.ts
+
+```typescript
+import {
+  REPO_PATH,
+  loadConfig,
+  readDoc,
+  invokeCheck,
+  writeFindings,
+  getPromptSpec,
+  type Finding,
+} from './00-config.ts';
+
+const cfg = await loadConfig();
+const spec = await getPromptSpec();
+
+const findings: Finding[] = [];
+
+if (spec) {
+  const discovery = cfg['required_files'] as Record<string, string[]>;
+  const docPaths = [...discovery['discovery']!, ...discovery['spec']!];
+  const docs = await Promise.all(
+    docPaths.map(async (path) => ({ path, source: await readDoc(path) })),
+  );
+  const c1 = (await invokeCheck('checks/c1-coverage', 'runC1', { promptSpec: spec, docs })) as Finding[];
+  findings.push(...c1);
+} else {
+  // No prompt_spec front-matter; emit a single pass record so it shows up in the scorecard.
+  findings.push({
+    id: 'C1-no-spec',
+    check: 'C1',
+    doc: '(prompt_spec)',
+    status: 'pass',
+    detail: 'No prompt_spec front-matter in config.prompt_path; coverage check skipped.',
+  });
+}
+
+await writeFindings('c1', findings);
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+  console.log(JSON.stringify({ c1Findings: findings.length }));
 }
 ```
 
@@ -392,7 +447,7 @@ import {
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Aggregate findings from all check cells.
-const cellIds = ['d1', 'd2', 'd3', 'd4', 'd5', 'd6', 'f7', 'semantic'];
+const cellIds = ['d1', 'c1', 'd2', 'd3', 'd4', 'd5', 'd6', 'f7', 'semantic'];
 const allFindings: Finding[] = [];
 for (const id of cellIds) {
   try {
