@@ -4,7 +4,7 @@ packages:
   - './evals'
 
 catalog:
-  zod: '^3.23.8'
+  zod: '^3.25.40'
   marked: '^14.1.2'
   ws: '^8.17.0'
   '@ai-sdk/anthropic': '^0.0.49'
