@@ -58,13 +58,14 @@ export function extractCommitClaims(src: string): CommitClaim[] {
   return claims;
 }
 
-export function extractCitedPaths(src: string): string[] {
+export function extractCitedPaths(src: string, roots?: string[]): string[] {
   const re = /`([^`]+\.(?:mts|ts|tsx|mjs|js|json))`/g;
+  const activeRoots = roots ?? REPO_ROOTS;
   const found = new Set<string>();
   let m: RegExpExecArray | null;
   while ((m = re.exec(src))) {
     const p = m[1]!;
-    if (REPO_ROOTS.some((r) => p.startsWith(r))) found.add(p);
+    if (activeRoots.some((r) => p.startsWith(r))) found.add(p);
   }
   return [...found];
 }

@@ -5,6 +5,7 @@ import { z } from 'zod';
 
 const ConfigSchema = z.object({
   prompt_path: z.string(),
+  repo_roots: z.array(z.string()).default(['packages/', 'srcbook/']),
   required_files: z.object({
     discovery: z.array(z.string()),
     spec: z.array(z.string()),

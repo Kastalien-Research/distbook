@@ -10,6 +10,7 @@ describe('config', () => {
     const cfg = await loadConfig(join(ROOT, 'config.yaml'));
     expect(cfg.boundaries[0]!.commit).toBe('c7a52cc');
     expect(cfg.required_files.discovery.length).toBeGreaterThan(0);
+    expect(cfg.repo_roots).toEqual(['packages/', 'srcbook/']);
   });
 
   it('loads allowlist.yaml as empty array initially', async () => {

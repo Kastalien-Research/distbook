@@ -1,5 +1,9 @@
 prompt_path: docs/superpowers/prompts/2026-05-10-codex-discovery-orchestration.md
 
+repo_roots:
+  - packages/
+  - srcbook/
+
 required_files:
   discovery:
     - docs/discovery/00-repo-map.md

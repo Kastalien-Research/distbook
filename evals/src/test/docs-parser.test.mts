@@ -30,4 +30,12 @@ describe('docs-parser', () => {
     expect(paths).toContain('packages/api/exec.mts');
     expect(paths).not.toContain('docs/discovery/00-repo-map.md');
   });
+
+  it('extractCitedPaths roots parameter overrides the default', async () => {
+    const src = await readFile(fixture, 'utf8');
+    const paths = extractCitedPaths(src, ['custom/']);
+    expect(paths).not.toContain('packages/api/srcmd/decoding.mts');
+    expect(paths).not.toContain('packages/api/session.mts');
+    expect(paths).not.toContain('packages/api/exec.mts');
+  });
 });
