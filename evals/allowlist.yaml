@@ -1,0 +1,3 @@
+# Each entry overrides a finding. Every entry requires a reason.
+# Schema: { check, in_doc?, scope, section_heading?, pattern?, reason, approved_by, approved_at }
+entries: []
