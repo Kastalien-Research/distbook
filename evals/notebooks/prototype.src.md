@@ -6,11 +6,7 @@
 
 ```json
 {
-  "type": "module",
-  "dependencies": {
-    "tsx": "latest",
-    "typescript": "latest"
-  }
+  "type": "module"
 }
 ```
 

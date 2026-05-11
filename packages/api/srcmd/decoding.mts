@@ -41,6 +41,7 @@ export function decode(contents: string): DecodeResult {
   const errors = validateTokenGroups(groups);
 
   // Finally, return either the set of errors or the tokens converted to cells if no errors were found.
+  const tsconfig = metadata['tsconfig.json'];
   return errors.length > 0
     ? { error: true, errors: errors }
     : {
@@ -48,7 +49,7 @@ export function decode(contents: string): DecodeResult {
         srcbook: {
           language: metadata.language,
           cells: convertToCells(groups),
-          'tsconfig.json': metadata['tsconfig.json'],
+          ...(tsconfig !== undefined ? { 'tsconfig.json': tsconfig } : {}),
         },
       };
 }
