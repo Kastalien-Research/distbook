@@ -1,6 +1,7 @@
 packages:
   - './packages/*'
   - './srcbook'
+  - './evals'
 
 catalog:
   zod: '^3.23.8'

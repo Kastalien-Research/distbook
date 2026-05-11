@@ -46,3 +46,7 @@ srcbook/lib/**/*
 docs/
 
 vite.config.ts.timestamp-*.mjs
+
+# evals
+evals/runs/*.json
+!evals/runs/.gitkeep
