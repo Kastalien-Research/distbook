@@ -1,9 +1,11 @@
 // evals/src/cli.mts
+import { readFile } from 'node:fs/promises';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runNotebook } from './runner.mts';
 import { writeScorecard, ScorecardSchema } from './scorecard.mts';
 import { loadConfig, loadAllowlist } from './config.mts';
+import { compareScorecards, formatDiff } from './compare-runs.mts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = resolve(__dirname, '..');
@@ -53,6 +55,17 @@ async function cmdValidateConfig() {
   console.log('config + allowlist: OK');
 }
 
+async function cmdCompareRuns(a: string, b: string, json: boolean): Promise<void> {
+  const cardA = ScorecardSchema.parse(JSON.parse(await readFile(a, 'utf8')));
+  const cardB = ScorecardSchema.parse(JSON.parse(await readFile(b, 'utf8')));
+  const diff = compareScorecards(cardA, cardB);
+  if (json) {
+    console.log(JSON.stringify(diff, null, 2));
+  } else {
+    console.log(formatDiff(diff));
+  }
+}
+
 async function main() {
   const { command, flags, positional } = parseArgs(process.argv.slice(2));
   switch (command) {
@@ -63,8 +76,14 @@ async function main() {
     case 'validate-config':
       await cmdValidateConfig();
       break;
+    case 'compare-runs':
+      if (!positional[0] || !positional[1]) {
+        throw new Error('usage: compare-runs <run-a.json> <run-b.json>');
+      }
+      await cmdCompareRuns(positional[0], positional[1], flags['json'] === true);
+      break;
     default:
-      console.error('usage: tsx src/cli.mts <run-notebook|validate-config>');
+      console.error('usage: tsx src/cli.mts <run-notebook|validate-config|compare-runs>');
       process.exit(2);
   }
 }
