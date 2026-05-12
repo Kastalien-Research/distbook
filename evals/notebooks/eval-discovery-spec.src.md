@@ -98,11 +98,23 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 ###### 10-d1.ts
 
 ```typescript
-import { REPO_PATH, loadConfig, invokeCheck, writeFindings, type Finding } from './00-config.ts';
+import {
+  REPO_PATH,
+  loadConfig,
+  getPromptSpec,
+  invokeCheck,
+  writeFindings,
+  type Finding,
+} from './00-config.ts';
 
 const cfg = await loadConfig();
 const discovery = cfg['required_files'] as Record<string, string[]>;
-const required = [...discovery['discovery']!, ...discovery['spec']!];
+const configPaths = [...discovery['discovery']!, ...discovery['spec']!];
+
+const spec = (await getPromptSpec()) as { required_artifacts?: string[] } | null;
+const specArtifacts = spec?.required_artifacts ?? [];
+
+const required = [...new Set([...configPaths, ...specArtifacts])];
 
 const findings = (await invokeCheck('checks/d1-required-files', 'runD1', {
   repoPath: REPO_PATH,
