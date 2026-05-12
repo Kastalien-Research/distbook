@@ -12,6 +12,7 @@ Things we discussed and decided to defer past v0. Not bugs; not blockers. Captur
 
 - **`BaseFinding` shared interface.** Each check defines its own `Finding`. The scorecard's zod schema is permissive (`.passthrough()`) which absorbs the variation, but a `BaseFinding` interface would give a compile-time contract.
 - **F7's `suggestedFix` vs canonical `cited`.** `applyAllowlist` matches `entry.pattern` against `cited` first, falling back to `suggestedFix`. F7 should also populate `cited` (currently only `suggestedFix`) so allowlist matching is uniform.
+- **Malformed `prompt_spec` fails the run rather than emitting a blocker.** `loadPromptSpec` returns `null` for missing front-matter but throws `ZodError` for present-but-invalid YAML (e.g., `version: '1'`, missing `heading_slugs`). Cell `15-c1.ts` handles the `null` case but does not catch the throw — a malformed spec aborts the notebook run with an unhandled error. This is deliberate fail-hard behavior: prompt-spec authoring errors should be loud, not silent. Document here so it is not later mistaken for an oversight.
 
 ## Toolchain
 
