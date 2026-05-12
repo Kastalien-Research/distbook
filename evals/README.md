@@ -18,7 +18,9 @@ pnpm --filter evals exec tsx src/cli.mts suggest-allowlist [--run <path>]
 - `compare-runs` — scorecard delta between two runs
 - `suggest-allowlist` — paste-ready YAML stubs from a scorecard's blockers
 
-Scorecard JSON lands in `evals/runs/<timestamp>.json`. Exit code 0 if no blockers, 1 otherwise.
+Scorecard JSON lands in `evals/runs/<timestamp>.json` (path is relative to the repo root). Exit code 0 if no blockers, 1 otherwise.
+
+`pnpm --filter evals exec` runs commands inside the `evals/` workspace, so paths passed to `compare-runs` and `suggest-allowlist --run` are resolved against `evals/`. Pass `runs/<timestamp>.json`, not `evals/runs/<timestamp>.json`. Absolute paths also work.
 
 If `docs/discovery/` or `docs/spec/` are missing (`docs/` is gitignored at the
 parent repo level), run `bash evals/scripts/link-docs.sh` once from the
@@ -42,11 +44,15 @@ Prompt files can declare expected topic coverage via YAML front-matter. The harn
 
 ```yaml
 ---
-version: 1
-heading_slugs:
-  - my-topic
+prompt_spec:
+  version: '0'
+  required_topics:
+    - id: my-topic
+      heading_slugs: [my-topic]
 ---
 ```
+
+`required_artifacts` is also supported and merges with `config.yaml`'s `required_files` before D1 runs.
 
 ## Allowlist
 
