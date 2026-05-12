@@ -11,7 +11,12 @@ pnpm install
 pnpm --filter evals run eval:notebook              # full eval
 pnpm --filter evals run eval:notebook -- --no-semantic
 pnpm --filter evals run eval:notebook -- --ref 'c7a52cc^'
+pnpm --filter evals exec tsx src/cli.mts compare-runs <a> <b> [--json]
+pnpm --filter evals exec tsx src/cli.mts suggest-allowlist [--run <path>]
 ```
+
+- `compare-runs` — scorecard delta between two runs
+- `suggest-allowlist` — paste-ready YAML stubs from a scorecard's blockers
 
 Scorecard JSON lands in `evals/runs/<timestamp>.json`. Exit code 0 if no blockers, 1 otherwise.
 
@@ -29,6 +34,19 @@ remediation if it's ever needed again.
 - **D5** citation density — spec paragraphs need ≥1 repo path citation, not just `docs/`
 - **D6** cross-doc anchor accuracy (does the linked heading exist in the target doc)
 - **F7** imprecise relative path citations (suggests the full repo path)
+- **C1** prompt-spec topic coverage — declared topics in the prompt's front-matter must have a matching heading slug somewhere in the evaluated docs
+
+## prompt_spec
+
+Prompt files can declare expected topic coverage via YAML front-matter. The harness parses this with `getPromptSpec()` and check C1 verifies that every declared topic slug resolves to a heading in the evaluated docs. For the full schema see `docs/superpowers/plans/2026-05-11-eval-harness-v1.md`. Minimal shape:
+
+```yaml
+---
+version: 1
+heading_slugs:
+  - my-topic
+---
+```
 
 ## Allowlist
 
