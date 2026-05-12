@@ -1,11 +1,12 @@
 // evals/src/cli.mts
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runNotebook } from './runner.mts';
 import { writeScorecard, ScorecardSchema } from './scorecard.mts';
 import { loadConfig, loadAllowlist } from './config.mts';
 import { compareScorecards, formatDiff } from './compare-runs.mts';
+import { suggestEntries, formatEntriesYaml, type BlockerLike } from './suggest-allowlist.mts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = resolve(__dirname, '..');
@@ -66,6 +67,27 @@ async function cmdCompareRuns(a: string, b: string, json: boolean): Promise<void
   }
 }
 
+async function cmdSuggestAllowlist(runPath?: string): Promise<void> {
+  let target = runPath;
+  if (!target) {
+    const runs = await readdir(join(PKG_ROOT, 'runs'));
+    const jsons = runs.filter((f) => f.endsWith('.json')).sort();
+    if (jsons.length === 0)
+      throw new Error('No scorecard in evals/runs/. Run eval:notebook first.');
+    target = join(PKG_ROOT, 'runs', jsons[jsons.length - 1]!);
+  }
+  const card = ScorecardSchema.parse(JSON.parse(await readFile(target, 'utf8')));
+  const entries = suggestEntries(card.blockers as unknown as BlockerLike[]);
+  if (entries.length === 0) {
+    console.log('# No blockers in this run; nothing to suggest.');
+    return;
+  }
+  console.log('# Suggested allowlist entries — paste into evals/allowlist.yaml under "entries:"');
+  console.log('# Edit each "reason" and "approved_by" before committing.');
+  console.log('');
+  console.log(formatEntriesYaml(entries));
+}
+
 async function main() {
   const { command, flags, positional } = parseArgs(process.argv.slice(2));
   switch (command) {
@@ -82,8 +104,13 @@ async function main() {
       }
       await cmdCompareRuns(positional[0], positional[1], flags['json'] === true);
       break;
+    case 'suggest-allowlist':
+      await cmdSuggestAllowlist(typeof flags.run === 'string' ? flags.run : undefined);
+      break;
     default:
-      console.error('usage: tsx src/cli.mts <run-notebook|validate-config|compare-runs>');
+      console.error(
+        'usage: tsx src/cli.mts <run-notebook|validate-config|compare-runs|suggest-allowlist>',
+      );
       process.exit(2);
   }
 }
